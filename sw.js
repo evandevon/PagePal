@@ -1,12 +1,15 @@
 // PagePal service worker: makes the app open and work without wifi.
 //
-// Strategy: "stale while revalidate" for the app's own files — serve the
-// saved copy instantly, then fetch a fresh copy in the background for next
-// time. So after you push a change to GitHub, students get it on their
-// second open. Bump CACHE_VERSION (and APP_VERSION in js/config.js) with
-// each release so old copies are cleared.
+// Strategy:
+// - The app's own pages, code and styles: network first, so an update pushed
+//   to GitHub shows up straight away. If the network is slow (over 4 s) or
+//   missing, the saved copy is used, so it still works without wifi.
+// - Libraries, fonts and icons (lib/, fonts/, icons/), which rarely change:
+//   saved copy first, refreshed in the background.
+// Bump CACHE_VERSION (and APP_VERSION in js/config.js) with each release so
+// old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.3.0';
+const CACHE_VERSION = 'pagepal-v0.4.1';
 
 const APP_SHELL = [
   './',
@@ -39,6 +42,7 @@ const APP_SHELL = [
   'js/qr-scan.js',
   'js/viewer.js',
   'js/annotate.js',
+  'js/templates.js',
   'js/send.js',
   'js/teacher.js',
   'teacher.html',
@@ -66,30 +70,52 @@ self.addEventListener('activate', event => {
   );
 });
 
+const NETWORK_TIMEOUT_MS = 4000;
+const STATIC = /\/(lib|fonts|icons)\//;
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   // Only handle our own files. Google Drive, speech services etc. go straight to the network.
   if (url.origin !== self.location.origin) return;
-
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_VERSION);
-    // Ignore ?pdf=… style query strings when matching the app page itself.
-    const cached = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
-    const network = fetch(req)
-      .then(res => {
-        if (res.ok && res.type === 'basic') cache.put(req, res.clone());
-        return res;
-      })
-      .catch(() => null);
-    if (cached) {
-      event.waitUntil(network);
-      return cached;
-    }
-    const res = await network;
-    if (res) return res;
-    if (req.mode === 'navigate') return (await cache.match('index.html')) || Response.error();
-    return Response.error();
-  })());
+  event.respondWith(STATIC.test(url.pathname) ? cacheFirst(event, req) : networkFirst(req));
 });
+
+async function fromNetwork(req, cache) {
+  const res = await fetch(req);
+  if (res.ok && res.type === 'basic') cache.put(req, res.clone());
+  return res;
+}
+
+async function networkFirst(req) {
+  const cache = await caches.open(CACHE_VERSION);
+  const network = fromNetwork(req, cache);
+  const timeout = new Promise(resolve => setTimeout(resolve, NETWORK_TIMEOUT_MS, null));
+  try {
+    const res = await Promise.race([network.catch(() => null), timeout]);
+    if (res) return res;
+  } catch { /* fall back to the cache */ }
+  // Ignore ?pdf=… style query strings when matching the app page itself.
+  const cached = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
+  if (cached) return cached;
+  if (req.mode === 'navigate') {
+    const page = await cache.match('index.html');
+    if (page) return page;
+  }
+  return network.catch(() => Response.error()); // still waiting? use it when it arrives
+}
+
+async function cacheFirst(event, req) {
+  const cache = await caches.open(CACHE_VERSION);
+  const cached = await cache.match(req);
+  if (cached) {
+    event.waitUntil(fromNetwork(req, cache).catch(() => null));
+    return cached;
+  }
+  try {
+    return await fromNetwork(req, cache);
+  } catch {
+    return Response.error();
+  }
+}

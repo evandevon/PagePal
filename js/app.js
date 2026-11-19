@@ -16,7 +16,8 @@ import { cropImage } from './crop.js';
 import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
-import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, pageImages, visibleSpot } from './viewer.js';
+import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, pageImages, visibleSpot, goToPage } from './viewer.js';
+import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName } from './send.js';
 
@@ -84,6 +85,7 @@ function backToHome() {
 }
 
 function showHome() {
+  hidePageMenu();
   flushSave();
   if (viewerDictation) viewerDictation.abort();
   tts.stop();
@@ -262,6 +264,56 @@ async function pasteFromClipboard() {
 }
 $('#btn-paste').addEventListener('click', pasteFromClipboard);
 
+// New page: lined, handwriting, grids… for students' own work.
+const templateDialog = $('#template-dialog');
+let templatePreviews = false;
+$('#btn-new').addEventListener('click', () => {
+  if (!templatePreviews) {
+    $('#template-grid').innerHTML = TEMPLATES.map(t => `
+      <button type="button" class="template-card" role="listitem" data-template="${t.id}">
+        <img src="${renderTemplate(t.id, 0.12).toDataURL('image/png')}" alt="">
+        <strong>${escapeHtml(t.name)}</strong><span>${escapeHtml(t.desc)}</span>
+      </button>`).join('');
+    templatePreviews = true;
+  }
+  $('#template-title').value = '';
+  templateDialog.showModal();
+});
+$('#template-grid').addEventListener('click', async e => {
+  const card = e.target.closest('[data-template]');
+  if (!card) return;
+  templateDialog.close();
+  const hide = showBusy('Making your page…');
+  try {
+    const record = await worksheets.fromTemplate(card.dataset.template, $('#template-title').value.trim());
+    hide();
+    await openRecord(record);
+  } catch (err) {
+    hide();
+    toast(explain(err), 5000);
+  }
+});
+templateDialog.addEventListener('click', e => { if (e.target === templateDialog) templateDialog.close(); });
+
+$('#viewer-add-page').addEventListener('click', async () => {
+  const rec = currentWorksheet();
+  if (!rec || !rec.template) return;
+  flushSave();
+  const hide = showBusy('Adding a page…');
+  try {
+    await worksheets.addTemplatePage(rec);
+    const fresh = await worksheets.get(rec.id);
+    await openWorksheet(fresh);
+    resetTools();
+    goToPage(fresh.pageCount);
+    toast(`Page ${fresh.pageCount} added.`);
+  } catch (err) {
+    toast(explain(err), 5000);
+  } finally {
+    hide();
+  }
+});
+
 // Ctrl/⌘ + V on the home screen (not while typing in a box).
 document.addEventListener('paste', e => {
   if (!$('#home') || $('#home').hidden) return;
@@ -338,6 +390,7 @@ initViewer({
     onChange: () => { if (wsSession) wsSession.activity(); scheduleSave(); updateTools(); },
     onSelect: () => updateTools(),
     onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
+    onLongPress: spot => showPageMenu(spot),
   },
   onSend: () => {
     if (!wsSession) return;
@@ -349,6 +402,7 @@ initViewer({
     $('#send-dialog-who').textContent = (wsSession.student ? wsSession.student + ' · ' : '') + wsSession.worksheet;
     renderStatsInto($('#send-dialog-stats'), wsSession, worksheetAnswer());
     $('#sd-teacher').hidden = !teacher;
+    $('#sd-connect').hidden = !!teacher;
     if (teacher) $('#sd-teacher').textContent = `Send to ${teacher.name}`;
     sendDialog.showModal();
   },
@@ -379,6 +433,11 @@ $('#sd-email').addEventListener('click', () => {
 });
 $('#sd-teacher').addEventListener('click', e => runSend(sendToTeacher, worksheetWork(), e.currentTarget));
 sendDialog.addEventListener('click', e => { if (e.target === sendDialog) sendDialog.close(); });
+$('#sd-connect').addEventListener('click', async () => {
+  sendDialog.close();
+  const text = await scanQr();
+  if (text && handleLinkText(text) && getSetting('teacher')) $('#viewer-send').click(); // back to Send, now with the teacher
+});
 
 // ── Answer tools on the worksheet ─────────────────────
 const toolButtons = [...document.querySelectorAll('.viewer-tools [data-tool]')];
@@ -393,7 +452,10 @@ function setTool(tool) {
     b.setAttribute('aria-checked', String(on));
   });
 }
-toolButtons.forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+toolButtons.forEach(b => b.addEventListener('click', () => {
+  setTool(b.dataset.tool);
+  if (b.dataset.tool === 'draw') toast('Draw with your finger. Two fingers still zoom. Tap Type to stop drawing.', 4000);
+}));
 
 function showColor() {
   $('#tool-color').style.setProperty('--swatch', COLORS[colorIndex]);
@@ -457,7 +519,9 @@ if (dictationStatus() !== 'ok') {
     onState: on => {
       viewerMic.classList.toggle('listening', on);
       viewerMic.setAttribute('aria-pressed', String(on));
-      viewerMic.querySelector('span').textContent = on ? 'Listening… let go' : 'Hold to talk';
+      viewerMic.querySelector('span').textContent = on ? (talkToggle ? 'Listening…' : 'Listening… let go') : 'Hold to talk';
+      $('#talk-stop').hidden = !(on && talkToggle);
+      if (!on) talkToggle = false;
       if (on) { tts.stop(); if (wsSession) wsSession.logEvent('dictation_start'); }
     },
     onResult: text => {
@@ -479,6 +543,60 @@ if (dictationStatus() !== 'ok') {
   });
   viewerDictation.attachHoldButton(viewerMic);
 }
+
+// ── Long-press menu on the page ───────────────────────
+const pageMenu = $('#page-menu');
+let menuSpot = null;
+
+function showPageMenu(spot) {
+  menuSpot = spot;
+  pageMenu.hidden = false;
+  // Next to the finger, kept on screen.
+  const w = pageMenu.offsetWidth, h = pageMenu.offsetHeight;
+  const x = Math.min(window.innerWidth - w - 8, Math.max(8, spot.clientX - w / 2));
+  let y = spot.clientY - h - 16;
+  if (y < 8) y = spot.clientY + 20;
+  pageMenu.style.left = x + 'px';
+  pageMenu.style.top = Math.min(window.innerHeight - h - 8, y) + 'px';
+  pageMenu.querySelector('button').focus({ preventScroll: true });
+}
+function hidePageMenu() { pageMenu.hidden = true; menuSpot = null; }
+
+document.addEventListener('pointerdown', e => {
+  if (!pageMenu.hidden && !pageMenu.contains(e.target)) hidePageMenu();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pageMenu.hidden) hidePageMenu(); });
+window.addEventListener('resize', hidePageMenu);
+$('#viewer-scroll').addEventListener('scroll', () => { if (!pageMenu.hidden) hidePageMenu(); }, { passive: true });
+
+pageMenu.addEventListener('click', e => {
+  const btn = e.target.closest('[data-add]');
+  const annot = currentAnnotator();
+  if (!btn || !menuSpot || !annot) return;
+  const { page, fx, fy } = menuSpot;
+  const what = btn.dataset.add;
+  hidePageMenu();
+  if (what === 'draw') {
+    setTool('draw');
+    toast('Draw with your finger. Two fingers still zoom. Tap Type to stop drawing.', 4000);
+  } else if (what === 'talk') {
+    setTool('text');
+    annot.placeAt('text', page, fx, fy, { focus: false });
+    startTalking();
+  } else {
+    if (what !== 'text') setTool('text'); // a one-off stamp; tapping still types
+    annot.placeAt(what, page, fx, fy);
+  }
+});
+
+// "Talk" from the menu: listen until Stop is tapped (no holding needed).
+let talkToggle = false;
+function startTalking() {
+  if (!viewerDictation) { toast('Talking isn’t available in this browser. Try Safari on iPad, or Chrome.', 5000); return; }
+  talkToggle = true;
+  viewerDictation.start();
+}
+$('#talk-stop').addEventListener('click', () => { if (viewerDictation) viewerDictation.stop(); });
 
 // ── Practice card ─────────────────────────────────────
 const readable = makeReadable(

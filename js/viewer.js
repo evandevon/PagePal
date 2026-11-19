@@ -107,7 +107,7 @@ function updatePageLabel() {
   $('#viewer-next').disabled = n >= current.pages.length;
 }
 
-function goToPage(n) {
+export function goToPage(n) {
   const p = current && current.pages[n - 1];
   if (p) $('#viewer-scroll').scrollTo({ top: p.el.offsetTop - 12, behavior: 'smooth' });
 }
@@ -118,6 +118,7 @@ export async function openWorksheet(record) {
   $('#home').hidden = true;
   $('#viewer').hidden = false;
   $('#viewer-title').textContent = record.title;
+  $('#viewer-add-page').hidden = !record.template;
   const container = $('#viewer-pages');
   container.textContent = '';
   current = { record, doc: null, sizes: [], urls: [], zoom: 1, pages: [], pageNumber: 1 };

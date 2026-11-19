@@ -2,7 +2,8 @@
 //
 // Items live in fractions of the page, so they stay in place at any zoom
 // and on any screen size:
-//   { id, page, type: 'text' | 'tick' | 'cross' | 'circle',
+//   { id, page, type: 'text' | 'tick' | 'cross' | 'circle' | 'ink',
+//     points,    ink only: [[x, y], …] as fractions of the page
 //     x, y,      top-left corner, as a fraction of page width / height
 //     w,         text box width, fraction of page width
 //     size,      font (or stamp) size, fraction of page width
@@ -14,6 +15,8 @@ export const COLOR_NAMES = ['Blue', 'Black', 'Red', 'Green'];
 const DEFAULT_SIZE = 0.024;      // about 14 pt on an A4 page
 const DEFAULT_WIDTH = 0.42;
 const STAMP_SIZE = 0.05;
+const INK_SIZE = 0.004;          // pen line width, fraction of page width
+const LONG_PRESS_MS = 500;
 const MIN_SIZE = 0.012, MAX_SIZE = 0.08;
 const HISTORY_LIMIT = 100;
 
@@ -25,6 +28,14 @@ const STAMP_SVG = {
 const STAMP_LABEL = { tick: 'Tick', cross: 'Cross', circle: 'Circle' };
 
 const newId = () => Math.random().toString(36).slice(2, 10);
+
+/** SVG path for a pen stroke (points are fractions of the page). */
+function inkPath(points) {
+  if (!points.length) return '';
+  const [x0, y0] = points[0];
+  if (points.length === 1) return `M${x0} ${y0}l0.0001 0`;
+  return 'M' + points.map(([x, y]) => `${x} ${y}`).join('L');
+}
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /**
@@ -66,7 +77,15 @@ export function drawItems(ctx, items, pageIndex, width, height, fontFamily) {
     const x = it.x * width, y = it.y * height;
     ctx.save();
     ctx.strokeStyle = ctx.fillStyle = it.color || COLORS[0];
-    if (it.type === 'text') {
+    if (it.type === 'ink') {
+      const pts = it.points || [];
+      ctx.lineWidth = it.size * width;
+      ctx.lineCap = ctx.lineJoin = 'round';
+      ctx.beginPath();
+      pts.forEach(([px, py], n) => (n ? ctx.lineTo(px * width, py * height) : ctx.moveTo(px * width, py * height)));
+      if (pts.length === 1) ctx.lineTo(pts[0][0] * width + 0.5, pts[0][1] * height);
+      ctx.stroke();
+    } else if (it.type === 'text') {
       if (!it.text || !it.text.trim()) { ctx.restore(); continue; }
       const px = it.size * width;
       ctx.font = `${px}px ${fontFamily}`;
@@ -112,6 +131,17 @@ export class Annotator {
       layer.className = 'annot-layer';
       layer.dataset.page = i;
       layer.addEventListener('click', e => this._onLayerClick(e, i));
+      layer.addEventListener('pointerdown', e => this._onLayerDown(e, i));
+      layer.addEventListener('pointermove', e => this._onLayerMove(e, i));
+      layer.addEventListener('pointerup', e => this._onLayerUp(e, i));
+      layer.addEventListener('pointercancel', () => this._cancelPress(true));
+      layer.addEventListener('contextmenu', e => {
+        // Right-click (Chromebooks, laptops) opens the same menu as a long press.
+        e.preventDefault();
+        if (e.target !== layer || this.tool === 'draw') return;
+        const { fx, fy } = this._pointInPage(e, i);
+        this.cb.onLongPress && this.cb.onLongPress({ page: i, fx, fy, clientX: e.clientX, clientY: e.clientY });
+      });
       pageEl.appendChild(layer);
       return layer;
     });
@@ -161,7 +191,11 @@ export class Annotator {
 
   // ── Tools ───────────────────────────────────────────
 
-  setTool(tool) { this.tool = tool; }
+  setTool(tool) {
+    this.tool = tool;
+    this.layers.forEach(l => l.classList.toggle('drawing', tool === 'draw'));
+    if (tool === 'draw') this.deselect();
+  }
 
   setColor(color) {
     this.color = color;
@@ -179,7 +213,8 @@ export class Annotator {
     const it = this.selected;
     if (!it) return;
     this._remember();
-    it.size = clamp(it.size * (step > 0 ? 1.18 : 1 / 1.18), MIN_SIZE, MAX_SIZE * (it.type === 'text' ? 1 : 2));
+    const [lo, hi] = it.type === 'ink' ? [0.0015, 0.03] : [MIN_SIZE, MAX_SIZE * (it.type === 'text' ? 1 : 2)];
+    it.size = clamp(it.size * (step > 0 ? 1.25 : 1 / 1.25), lo, hi);
     this._applyStyle(it);
     this._changed();
   }
@@ -202,18 +237,103 @@ export class Annotator {
 
   _onLayerClick(e, pageIndex) {
     if (e.target !== this.layers[pageIndex]) return; // a tap on an existing item
-    const { fx, fy, r } = this._pointInPage(e, pageIndex);
-    if (this.tool === 'text') {
-      // Tapping away from a box finishes it; an empty one is tidied away.
-      const lineH = (DEFAULT_SIZE * 1.35 * r.width) / r.height;
-      this.addText(pageIndex, fx, fy - lineH * 0.6);
-    } else {
-      const s = (STAMP_SIZE * 1.6);
-      this.addStamp(pageIndex, this.tool, fx - s / 2, fy - (s * r.width / r.height) / 2);
-    }
+    if (this._suppressClick) { this._suppressClick = false; return; } // it was a long press
+    if (this.tool === 'draw') return;
+    const { fx, fy } = this._pointInPage(e, pageIndex);
+    this.placeAt(this.tool, pageIndex, fx, fy);
   }
 
-  addText(page, x, y, text = '') {
+  /** Add a text box or stamp centred on a tapped point (fractions of the page). */
+  placeAt(tool, pageIndex, fx, fy, { text = '', focus = true } = {}) {
+    const r = this.layers[pageIndex].getBoundingClientRect();
+    if (tool === 'text') {
+      const lineH = (DEFAULT_SIZE * 1.35 * r.width) / r.height;
+      return this.addText(pageIndex, fx, fy - lineH * 0.6, text, { focus });
+    }
+    const s = STAMP_SIZE * 1.6;
+    return this.addStamp(pageIndex, tool, fx - s / 2, fy - (s * r.width / r.height) / 2);
+  }
+
+  // ── Long press (menu) and drawing ───────────────────
+
+  _onLayerDown(e, pageIndex) {
+    if (e.target !== this.layers[pageIndex]) return;
+    if (this.tool === 'draw') { this._startStroke(e, pageIndex); return; }
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    this._cancelPress();
+    const { fx, fy } = this._pointInPage(e, pageIndex);
+    const press = { x: e.clientX, y: e.clientY, page: pageIndex, fx, fy };
+    press.timer = setTimeout(() => {
+      this._press = null;
+      this._suppressClick = true;
+      if (navigator.vibrate) navigator.vibrate(20);
+      this.cb.onLongPress && this.cb.onLongPress({ page: pageIndex, fx, fy, clientX: press.x, clientY: press.y });
+    }, LONG_PRESS_MS);
+    this._press = press;
+  }
+
+  _onLayerMove(e, pageIndex) {
+    if (this._stroke) { this._extendStroke(e); return; }
+    if (this._press && Math.hypot(e.clientX - this._press.x, e.clientY - this._press.y) > 10) this._cancelPress();
+  }
+
+  _onLayerUp(e) {
+    if (this._stroke) { this._endStroke(e); return; }
+    this._cancelPress();
+  }
+
+  _cancelPress(alsoStroke = false) {
+    if (this._press) { clearTimeout(this._press.timer); this._press = null; }
+    if (alsoStroke && this._stroke) { this._stroke.path.closest('svg').remove(); this._stroke = null; }
+  }
+
+  _startStroke(e, pageIndex) {
+    if (this._stroke) { this._cancelPress(true); return; } // a second finger: pinch, not drawing
+    e.preventDefault();
+    this.layers[pageIndex].setPointerCapture(e.pointerId);
+    const { fx, fy } = this._pointInPage(e, pageIndex);
+    const it = { id: newId(), page: pageIndex, type: 'ink', points: [[fx, fy]], size: INK_SIZE, color: this.color };
+    const svg = this._inkSvg(it);
+    this.layers[pageIndex].appendChild(svg);
+    this._stroke = { it, path: svg.querySelector('path'), pointerId: e.pointerId };
+  }
+
+  _extendStroke(e) {
+    const st = this._stroke;
+    if (e.pointerId !== st.pointerId) return;
+    const { fx, fy } = this._pointInPage(e, st.it.page);
+    const last = st.it.points[st.it.points.length - 1];
+    if (Math.hypot(fx - last[0], fy - last[1]) < 0.002) return;
+    st.it.points.push([+fx.toFixed(4), +fy.toFixed(4)]);
+    st.path.setAttribute('d', inkPath(st.it.points));
+  }
+
+  _endStroke() {
+    const st = this._stroke;
+    this._stroke = null;
+    st.path.closest('svg').remove();
+    this._remember();
+    this.items.push(st.it);
+    this._render(st.it);
+    this._changed();
+  }
+
+  _inkSvg(it) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'annot annot-ink');
+    svg.setAttribute('viewBox', '0 0 1 1');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.dataset.id = it.id;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', inkPath(it.points));
+    path.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(path);
+    svg.style.color = it.color;
+    path.style.strokeWidth = `calc(var(--pw, 800px) * ${it.size})`;
+    return svg;
+  }
+
+  addText(page, x, y, text = '', { focus = true } = {}) {
     this._dropEmptySelected();
     this._remember();
     const w = Math.min(DEFAULT_WIDTH, 0.98 - x);
@@ -225,7 +345,7 @@ export class Annotator {
     this.items.push(it);
     this._render(it);
     this.select(it.id);
-    this.focusSelected();
+    if (focus) this.focusSelected();
     this._changed();
     return it;
   }
@@ -246,6 +366,12 @@ export class Annotator {
   _el(id) { return this.layers.map(l => l.querySelector(`[data-id="${id}"]`)).find(Boolean) || null; }
 
   _render(it) {
+    if (it.type === 'ink') {
+      const svg = this._inkSvg(it);
+      svg.querySelector('path').addEventListener('click', e => { e.stopPropagation(); if (this.tool !== 'draw') this.select(it.id); });
+      this.layers[it.page].appendChild(svg);
+      return;
+    }
     const el = document.createElement('div');
     el.className = 'annot ' + (it.type === 'text' ? 'annot-text' : 'annot-stamp');
     el.dataset.id = it.id;
@@ -303,6 +429,11 @@ export class Annotator {
   _applyStyle(it) {
     const el = this._el(it.id);
     if (!el) return;
+    if (it.type === 'ink') {
+      el.style.color = it.color;
+      el.querySelector('path').style.strokeWidth = `calc(var(--pw, 800px) * ${it.size})`;
+      return;
+    }
     el.style.left = (it.x * 100) + '%';
     el.style.top = (it.y * 100) + '%';
     el.style.color = it.color;

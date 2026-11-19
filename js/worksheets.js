@@ -12,6 +12,7 @@ import { openPdf, pdfThumbnail, pdfTitle } from './pdf-doc.js';
 import { canvasToBlob, thumbnail, blobToCanvas } from './image-tools.js';
 import { docxToCanvases, DOCX_TYPE } from './docx-doc.js';
 import { looksLikePdf } from './remote.js';
+import { renderTemplate, getTemplate } from './templates.js';
 
 export class UnsupportedFileError extends Error {}
 
@@ -61,13 +62,27 @@ export async function fromPdf(blob, { title, from = 'file', sourceKey } = {}) {
   }
 }
 
-export async function fromCanvases(canvases, { title, from = 'camera', sourceKey } = {}) {
+export async function fromCanvases(canvases, { title, from = 'camera', sourceKey, template, imageType = 'image/jpeg' } = {}) {
   const pages = [];
-  for (const c of canvases) pages.push({ blob: await canvasToBlob(c, 'image/jpeg', 0.88), width: c.width, height: c.height });
+  for (const c of canvases) pages.push({ blob: await canvasToBlob(c, imageType, 0.88), width: c.width, height: c.height });
   return save({
     id: store.newId(), title: title || defaultPhotoTitle(), kind: 'images', pages, pageCount: pages.length,
-    thumb: await thumbnail(canvases[0]), from, sourceKey, createdAt: now(), updatedAt: now(),
+    thumb: await thumbnail(canvases[0]), from, sourceKey, template, createdAt: now(), updatedAt: now(),
   });
+}
+
+/** A new page for students' own work: lined, grid, dots… (PNG keeps lines crisp and small). */
+export function fromTemplate(templateId, title) {
+  const t = getTemplate(templateId);
+  return fromCanvases([renderTemplate(t.id)], { title: title || t.name, from: 'new', template: t.id, imageType: 'image/png' });
+}
+
+/** Add another page of the same kind to the end of a template worksheet. */
+export async function addTemplatePage(record) {
+  const c = renderTemplate(record.template);
+  record.pages.push({ blob: await canvasToBlob(c, 'image/png'), width: c.width, height: c.height });
+  record.pageCount = record.pages.length;
+  return update(record);
 }
 
 /**

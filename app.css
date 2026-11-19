@@ -155,7 +155,7 @@ input[type=text], input[type=email], select, textarea {
 .name-label { font-weight: 700; white-space: nowrap; }
 #student-name { font-size: 20px; }
 
-.start-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.start-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 12px; }
 .big-btn {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
@@ -398,6 +398,42 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 .annot-stamp svg { width: 100%; height: 100%; stroke: currentColor; stroke-width: 2.4; fill: none; }
 .annot-stamp.selected { outline: 2px dashed var(--brand); outline-offset: 2px; border-radius: 6px; }
 
+/* Long-press stays ours: no iPad text-selection loupe or image menu. */
+.page, .annot-layer { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.annot-input { -webkit-user-select: text; user-select: text; }
+.annot-layer.drawing { touch-action: none; cursor: crosshair; }
+.annot-layer.drawing .annot, .annot-layer.drawing .annot-ink path { pointer-events: none; }
+.annot-ink { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.annot-ink path { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; pointer-events: visibleStroke; cursor: pointer; }
+.annot-ink.selected path { filter: drop-shadow(0 0 3px #1D9E75) drop-shadow(0 0 1px #1D9E75); }
+
+.page-menu {
+  position: fixed; z-index: 30;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 6px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+.page-menu button {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 72px; min-height: 60px; padding: 6px;
+  border: 0; border-radius: 12px; background: transparent; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+}
+.page-menu button:hover, .page-menu button:focus-visible { background: var(--brand-soft); }
+.page-menu svg { width: 26px; height: 26px; color: var(--brand); }
+
+.talk-stop {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 35; display: inline-flex; align-items: center; gap: 10px;
+  min-height: 56px; padding: 10px 22px;
+  border: 0; border-radius: 999px; background: #E74C3C; color: #fff;
+  font-size: 17px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+}
+.rec-dot { width: 14px; height: 14px; border-radius: 50%; background: #fff; animation: pulse-dot 1s ease-in-out infinite; }
+@keyframes pulse-dot { 50% { opacity: 0.3; } }
+
 /* ── Full-screen tools (crop, scanner) ────────────── */
 .fullscreen {
   position: fixed; inset: 0; z-index: 40;
@@ -455,6 +491,19 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── New page picker ──────────────────────────────── */
+dialog.wide-dialog { width: min(760px, calc(100vw - 24px)); }
+.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 8px 0 4px; }
+.template-card {
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  padding: 8px; border: 2px solid var(--line); border-radius: 14px;
+  background: var(--card); cursor: pointer; text-align: left;
+}
+.template-card:hover, .template-card:focus-visible { border-color: var(--brand); }
+.template-card img { width: 100%; aspect-ratio: 210 / 297; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+.template-card strong { font-size: 15px; }
+.template-card span { font-size: 13px; color: var(--muted); }
+
 /* ── Send dialog, teacher row ─────────────────────── */
 .send-tools.stack { flex-direction: column; }
 .send-tools.stack .tool-btn { width: 100%; }
@@ -487,7 +536,6 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 
 /* ── Small screens ─────────────────────────────────── */
 @media (max-width: 720px) {
-  .start-grid { grid-template-columns: repeat(2, 1fr); }
   .viewer-zoom { display: none; }
 }
 

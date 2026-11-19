@@ -65,6 +65,11 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg>
           <span>Take a photo</span>
         </button>
+        <button id="btn-new" class="big-btn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>
+          <span>New page</span>
+          <small>lines, grid, blank</small>
+        </button>
         <button id="btn-paste" class="big-btn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6v3H9z"/><path d="M15 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M9 13l2 2 4-4"/></svg>
           <span>Paste image</span>
@@ -165,6 +170,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M21 21l-5-5"/></svg>
         </button>
       </div>
+      <button id="viewer-add-page" class="tool-btn" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Add page</span>
+      </button>
       <button id="viewer-send" class="tool-btn primary send-btn" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
         <span>Send</span>
@@ -183,6 +192,9 @@
         </button>
         <button class="tool" type="button" data-tool="circle" role="radio" aria-checked="false" title="Circle">
           <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="8"/></svg><span>Circle</span>
+        </button>
+        <button class="tool" type="button" data-tool="draw" role="radio" aria-checked="false" title="Draw with your finger">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21c3-1 4-3 5-5l9-9a2.1 2.1 0 0 0-3-3l-9 9c-2 1-4 2-5 5"/><path d="M14 4l3 3"/></svg><span>Draw</span>
         </button>
       </div>
       <button id="tool-mic" class="mic-btn tool-mic" type="button" aria-label="Hold to talk into the selected answer" aria-pressed="false">
@@ -214,6 +226,19 @@
       <div id="viewer-pages" class="viewer-pages"></div>
     </div>
   </section>
+
+  <div id="page-menu" class="page-menu" role="menu" aria-label="Add to the page" hidden>
+    <button type="button" role="menuitem" data-add="text"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 5v14M9 19h6"/></svg>Type</button>
+    <button type="button" role="menuitem" data-add="talk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Talk</button>
+    <button type="button" role="menuitem" data-add="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg>Tick</button>
+    <button type="button" role="menuitem" data-add="cross"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>Cross</button>
+    <button type="button" role="menuitem" data-add="circle"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="8"/></svg>Circle</button>
+    <button type="button" role="menuitem" data-add="draw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21c3-1 4-3 5-5l9-9a2.1 2.1 0 0 0-3-3l-9 9c-2 1-4 2-5 5"/><path d="M14 4l3 3"/></svg>Draw</button>
+  </div>
+
+  <button id="talk-stop" class="talk-stop" type="button" hidden>
+    <span class="rec-dot" aria-hidden="true"></span><span>Listening… tap to stop</span>
+  </button>
 
   <section id="crop" class="fullscreen crop" hidden aria-labelledby="crop-title">
     <div class="fs-bar">
@@ -253,6 +278,20 @@
     <div class="busy-card"><div class="spinner" aria-hidden="true"></div><p id="busy-text">Loading…</p></div>
   </div>
 
+  <dialog id="template-dialog" class="wide-dialog" aria-labelledby="h-template">
+    <form method="dialog" class="settings-form">
+      <div class="dialog-head">
+        <h2 id="h-template">Start a new page</h2>
+        <button class="icon-btn" value="close" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div id="template-grid" class="template-grid" role="list"></div>
+      <label for="template-title">Name it (optional)</label>
+      <input id="template-title" type="text" autocomplete="off" placeholder="My story">
+    </form>
+  </dialog>
+
   <dialog id="next-page" aria-labelledby="next-page-title">
     <div class="settings-form">
       <h2 id="next-page-title">Ready for the next page?</h2>
@@ -276,6 +315,7 @@
       <dl id="send-dialog-stats" class="stats"></dl>
       <div class="send-tools stack">
         <button id="sd-teacher" class="tool-btn primary" type="button" hidden>Send to teacher</button>
+        <button id="sd-connect" class="tool-btn" type="button" hidden>Connect to my teacher (scan class QR code)</button>
         <button id="sd-share" class="tool-btn primary" type="button">Email or share</button>
         <button id="sd-email" class="tool-btn" type="button">Email summary</button>
         <button id="sd-save" class="tool-btn" type="button">Save to Files</button>
