@@ -74,3 +74,13 @@ test('file types: Word is accepted, other Office files get advice', () => {
   assert.equal(unsupportedReason('application/pdf', 'a.pdf'), null);
   assert.equal(cleanName('Week_5_Fractions.pdf'), 'Week 5 Fractions');
 });
+
+test('class QR codes carry a join code and expiry, never the sending key', () => {
+  const t = { name: 'Mr Evans, 3/4B', url: 'https://script.google.com/macros/s/AKfy/exec', join: 'j0in1234567890ab', expires: 1765000000000 };
+  const decoded = parseLink(teacherLink(APP, t)).teacher;
+  assert.deepEqual(decoded, t);
+  assert.equal(decoded.secret, undefined);
+  // Older codes that held the key directly still work.
+  const old = { name: 'Ms Lee', url: 'https://script.google.com/macros/s/X/exec', secret: 'k3y' };
+  assert.deepEqual(decodeTeacher(encodeTeacher(old)), old);
+});

@@ -28,7 +28,10 @@ export function driveKindFromLink(text) {
 }
 
 // ── Teacher inbox codes ───────────────────────────────
-// A teacher code is base64url JSON: {n: label, u: web app URL, k: secret}.
+// A class QR code is base64url JSON: {n: label, u: web app URL, j: join code,
+// x: expiry (ms)}. The iPad swaps the join code for the sending key with the
+// teacher's script, so the key itself never appears on the wall. Older codes
+// ({n, u, k: key}) made before version 2 of the script are still understood.
 
 function b64urlEncode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -47,15 +50,19 @@ export function isInboxUrl(u) {
   return /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(String(u || ''));
 }
 
-export function encodeTeacher({ name, url, secret }) {
-  return b64urlEncode(JSON.stringify({ n: name, u: url, k: secret }));
+export function encodeTeacher({ name, url, join, expires, secret }) {
+  const o = join ? { n: name, u: url, j: join, x: expires } : { n: name, u: url, k: secret };
+  return b64urlEncode(JSON.stringify(o));
 }
 
 export function decodeTeacher(code) {
   try {
     const o = JSON.parse(b64urlDecode(String(code)));
-    if (!o || !isInboxUrl(o.u) || !o.k) return null;
-    return { name: String(o.n || 'my teacher').slice(0, 80), url: o.u, secret: String(o.k) };
+    if (!o || !isInboxUrl(o.u)) return null;
+    const name = String(o.n || 'my teacher').slice(0, 80);
+    if (o.j) return { name, url: o.u, join: String(o.j), expires: Number(o.x) || 0 };
+    if (o.k) return { name, url: o.u, secret: String(o.k) };
+    return null;
   } catch {
     return null;
   }

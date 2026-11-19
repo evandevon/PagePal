@@ -85,10 +85,10 @@ async function uploadImage(blob) {
  * Plain text body = a "simple" request, so the browser sends it without a
  * pre-flight check that Apps Script can't answer.
  */
-export async function postToInbox(teacher, payload) {
+async function postJson(url, body) {
   let res;
   try {
-    res = await fetch(teacher.url, { method: 'POST', body: JSON.stringify({ ...payload, secret: teacher.secret }) });
+    res = await fetch(url, { method: 'POST', body: JSON.stringify(body) });
   } catch {
     return { ok: false, error: 'network' };
   }
@@ -99,10 +99,40 @@ export async function postToInbox(teacher, payload) {
   }
 }
 
+export function postToInbox(teacher, payload) {
+  return postJson(teacher.url, { action: 'submit', ...payload, secret: teacher.secret });
+}
+
+/** Swap a class QR code's join code for the sending key. */
+export function joinInbox(url, join) {
+  return postJson(url, { action: 'join', join });
+}
+
+/** Teacher page: ask the script for a new join code (proves the secret code is right). */
+export function newJoinCode(url, secret, days, label) {
+  return postJson(url, { action: 'newJoin', secret, days, label });
+}
+
+/** Teacher page: which version of the PagePal Inbox script is deployed. */
+export async function inboxVersion(url) {
+  try {
+    const res = await fetch(url);
+    const o = await res.json();
+    return o && o.app === 'PagePal Inbox' ? (o.version || 1) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export const INBOX_ERRORS = {
-  'wrong-code': 'Your teacher’s class QR code has changed. Scan the new one in Settings.',
+  'wrong-code': 'Your teacher’s class QR code has changed. Scan the new one (Settings › Scan class QR code).',
+  'expired-join': 'That class QR code has expired. Ask your teacher for a new one.',
+  busy: 'Your teacher’s sheet is very busy right now. Wait a minute and try again.',
+  'too-big': 'This work is too big to send. Try sending fewer pages.',
   network: 'Couldn’t reach your teacher’s sheet. Check the wifi and try again.',
   'bad-reply': 'Your teacher’s sheet didn’t answer properly. Tell your teacher.',
+  'bad-request': 'Your teacher’s sheet didn’t understand the message. Tell your teacher.',
+  server: 'Your teacher’s sheet had a problem. Tell your teacher.',
 };
 
 export async function sendToTeacher(work) {
@@ -120,7 +150,9 @@ export async function sendToTeacher(work) {
     image,
   });
   if (result.ok) {
-    toast(`Sent to ${teacher.name} ✓`, 4000);
+    toast(result.warnings && result.warnings.length
+      ? `Sent to ${teacher.name}, but the page picture wasn’t accepted.`
+      : `Sent to ${teacher.name} ✓`, 4000);
     return true;
   }
   toast(INBOX_ERRORS[result.error] || 'Couldn’t send: ' + result.error, 6000);

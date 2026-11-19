@@ -31,7 +31,7 @@ On the home screen, the **Try the helpers** card has a sentence to tap and play,
 `teacher.html` (linked from Settings › “For teachers: make QR codes”) makes two kinds of QR code:
 
 1. **Worksheet QR:** paste a Google Drive link. The page checks the file is shared and is a type students can open, then shows a printable QR code.
-2. **Class QR:** for receiving student work in a Google Sheet. See the [teacher set-up guide](https://claude.ai/artifact/D4guC9H9etjt9FgFegXvW7) and `teacher/PagePal-Inbox.gs`.
+2. **Class QR:** for receiving student work in a Google Sheet. It expires after the time the teacher picks. See the [teacher set-up guide](https://claude.ai/artifact/D4guC9H9etjt9FgFegXvW7), `teacher/PagePal-Inbox.gs` and `teacher/appsscript.json`.
 
 What opens from Google Drive:
 
@@ -92,7 +92,8 @@ js/
 lib/                   Third-party libraries, kept locally for offline use (see lib/README.md)
 fonts/                 OpenDyslexic (SIL Open Font License)
 icons/                 App icons
-teacher/PagePal-Inbox.gs  Google Apps Script the teacher pastes into a Google Sheet to receive work (Stage 6)
+teacher/PagePal-Inbox.gs  Google Apps Script the teacher pastes into a Google Sheet to receive work
+teacher/appsscript.json   Its permission settings (this sheet + files it creates only)
 tests/                 Unit tests for the pure logic (run: node --test)
 ```
 
@@ -105,6 +106,21 @@ python3 -m http.server 8000
 ```
 
 Then open http://localhost:8000. Run the unit tests with `node --test` (Node 20 or later). `package.json` exists only for the tests; the site needs no install.
+
+## Security
+
+How sending work to a teacher is protected (details in the teacher set-up guide):
+
+- **No server of ours.** Work goes from the iPad straight to the teacher's own Google Sheet (an Apps Script web app the teacher deploys).
+- **Narrow permissions.** `teacher/appsscript.json` limits the script to its own spreadsheet and the Drive files it creates (`spreadsheets.currentonly`, `drive.file`). It uses the Drive API directly because Apps Script's DriveApp always requires access to the whole Drive.
+- **Join codes, not keys, on the wall.** A class QR code holds a join code that the script issues and that expires (1 day to 1 term). Scanning it swaps the join code for the sending key. `resetCode()` replaces the key and cancels every join code.
+- **Write-only.** The web app accepts submissions; nothing can be read back through it.
+- **File checks.** Pictures and PDFs must really be JPEG, PNG or PDF (checked by their first bytes), 5 MB at most. Anything else is refused and noted in the sheet.
+- **Rate limits.** At most 60 sends a minute and 1,500 a day.
+- **No formula injection.** Text starting with `=`, `+`, `-` or `@` is stored as plain text, both in the sheet and in the CSV students save.
+- **Not covered:** student identity (no logins, so anyone with a current code or a connected iPad can send in any name), and the content of what students send.
+
+**For whoever looks after this repo:** anyone who can change the code here can change where every iPad sends work. Turn on two-factor sign-in for the GitHub account, and only give write access to people you trust.
 
 ## Privacy
 

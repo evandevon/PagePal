@@ -36,3 +36,6 @@ a.tool-btn { text-decoration: none; color: inherit; }
 /* The app's icon style (outlined strokes) must not apply to QR codes. */
 .qr-box svg { stroke: none; width: 100%; height: auto; }
 .qr-box svg * { stroke: none; }
+
+.tips { text-align: left; margin-top: 16px; }
+.teacher-page select { margin-top: 2px; }

@@ -95,3 +95,15 @@ test('report file names are safe and pair up by date and time', () => {
   assert.equal(reportFileName('Zoë O’Brien', 'Week 5: Fractions!', 'csv', when), 'Zoë-O-Brien_Week-5-Fractions_2026-11-19_0905.csv');
   assert.equal(reportBaseName('', '', when), 'student_worksheet_2026-11-19_0905');
 });
+
+test('CSV never lets an answer become a spreadsheet formula', async () => {
+  const { csvCell } = await import('../js/session-log.js');
+  assert.equal(csvCell('=HYPERLINK("http://bad","Click")'), `"'=HYPERLINK(""http://bad"",""Click"")"`);
+  assert.equal(csvCell('+1'), "'+1");
+  assert.equal(csvCell('-SUM(A1)'), "'-SUM(A1)");
+  assert.equal(csvCell('@cmd'), "'@cmd");
+  assert.equal(csvCell(-5), '-5');           // real numbers are left alone
+  assert.equal(csvCell('half, quarter'), '"half, quarter"');
+  const log = new SessionLog({ student: '=cmd|"/c calc"!A1', worksheet: 'W' });
+  assert.match(toCSV(log, '=1+1'), /Student,"'=cmd\|""\/c calc""!A1"/);
+});

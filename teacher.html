@@ -66,9 +66,10 @@
 
     <section class="card" aria-labelledby="h-inbox">
       <h2 id="h-inbox">2. Class QR code for receiving work</h2>
-      <p class="note">Make this <strong>once</strong>. Students scan it once; from then on every worksheet they send, from any worksheet QR code, file or photo, arrives in your Google Sheet. Teach more than one class? Use the same web app URL and secret code with a different name for each class; the Class column tells them apart. Set up the sheet first with the
+      <p class="note">Students scan this once; from then on every worksheet they send arrives in your Google Sheet. Teach more than one class? Use the same web app URL and secret code with a different name for each class. Set up the sheet first with the
         <a href="https://claude.ai/artifact/D4guC9H9etjt9FgFegXvW7" target="_blank" rel="noopener">teacher set-up guide</a>
-        (script: <a href="https://github.com/evandevon/PagePal/blob/main/teacher/PagePal-Inbox.gs" target="_blank" rel="noopener">PagePal-Inbox.gs</a>).</p>
+        (files: <a href="https://github.com/evandevon/PagePal/blob/main/teacher/PagePal-Inbox.gs" target="_blank" rel="noopener">PagePal-Inbox.gs</a>,
+        <a href="https://github.com/evandevon/PagePal/blob/main/teacher/appsscript.json" target="_blank" rel="noopener">appsscript.json</a>).</p>
 
       <label class="field-label" for="in-name">Your name and class, as students know it</label>
       <input id="in-name" type="text" autocomplete="off" placeholder="Mr Evans, 3/4B">
@@ -76,10 +77,17 @@
       <input id="in-url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
              placeholder="https://script.google.com/macros/s/…/exec">
       <label class="field-label" for="in-secret">Secret code (from the Execution log)</label>
-      <input id="in-secret" type="text" autocomplete="off" spellcheck="false" placeholder="16 letters and numbers">
+      <input id="in-secret" type="password" autocomplete="off" spellcheck="false" placeholder="24 letters and numbers">
+      <label class="field-label" for="in-days">QR code works for</label>
+      <select id="in-days">
+        <option value="1">1 day</option>
+        <option value="7" selected>1 week</option>
+        <option value="28">4 weeks</option>
+        <option value="80">The whole term (about 11 weeks)</option>
+      </select>
+      <p class="note">After that, the QR code stops connecting new iPads. iPads already connected keep working.</p>
       <div class="send-tools">
-        <button id="in-test" class="tool-btn primary" type="button">Test connection and make QR code</button>
-        <button id="in-make" class="tool-btn" type="button">Make QR code without testing</button>
+        <button id="in-make" class="tool-btn primary" type="button">Check connection and make QR code</button>
       </div>
       <div id="in-status" class="status" role="status" aria-live="polite" hidden></div>
 
@@ -87,11 +95,19 @@
         <div id="in-qr" class="qr-box"></div>
         <p id="in-label" class="qr-label"></p>
         <p class="qr-sub">In PagePal: Settings › Scan class QR code</p>
+        <p id="in-expiry" class="qr-sub"></p>
         <div class="send-tools no-print">
           <button id="in-png" class="tool-btn" type="button">Download picture</button>
           <button id="in-print" class="tool-btn primary" type="button">Print</button>
         </div>
-        <p class="note no-print">Keep this code within your class: anyone who scans it can send work to your sheet. If it spreads, run <code>resetCode</code> in Apps Script and make a new one.</p>
+        <div class="status warn no-print tips">
+          <strong>Keeping it safe</strong>
+          <ul>
+            <li>Show it while students connect, then take it down. Anyone who scans it before it expires can send work to your sheet (they can never read it).</li>
+            <li>At the start of each term, or if the code spreads, run <code>resetCode</code> in Apps Script. Connected iPads then need a new QR code.</li>
+            <li>Open students’ pictures and PDFs in Google Drive’s viewer rather than downloading them, and be wary of web links inside answers.</li>
+          </ul>
+        </div>
       </div>
     </section>
   </main>

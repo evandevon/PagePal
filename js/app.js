@@ -19,7 +19,7 @@ import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
 import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, pageImages, visibleSpot, goToPage } from './viewer.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
-import { shareWork, saveWork, emailSummary, sendToTeacher, needsName } from './send.js';
+import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS } from './send.js';
 
 const settings = getSettings();
 
@@ -195,11 +195,28 @@ async function openLink(link) {
   }
 }
 
-function connectTeacher(teacher) {
-  if (!confirm(`Send your work to ${teacher.name}?`)) return;
-  setSetting('teacher', teacher);
+/** A class QR code: connect this iPad so Send to teacher goes to that sheet. */
+async function connectTeacher(teacher) {
+  if (teacher.join && teacher.expires && Date.now() > teacher.expires) {
+    toast('That class QR code has expired. Ask your teacher for a new one.', 6000);
+    return false;
+  }
+  if (!confirm(`Send your work to ${teacher.name}?\n\nOnly say yes to a QR code your teacher gave you.`)) return false;
+  let saved = teacher;
+  if (teacher.join) {
+    const hide = showBusy('Connecting to your teacher…');
+    const result = await joinInbox(teacher.url, teacher.join);
+    hide();
+    if (!result.ok || !result.key) {
+      toast(INBOX_ERRORS[result.error] || 'Couldn’t connect: ' + result.error, 6000);
+      return false;
+    }
+    saved = { name: teacher.name, url: teacher.url, secret: result.key };
+  }
+  setSetting('teacher', saved);
   renderTeacher();
-  toast(`Connected. Your work will go to ${teacher.name}.`, 4000);
+  toast(`Connected. Your work will go to ${saved.name}.`, 4000);
+  return true;
 }
 
 /** Text from a QR code, a paste, or the page address. */
@@ -211,8 +228,8 @@ function handleLinkText(text) {
       : 'That QR code isn’t a PagePal worksheet.', 5000);
     return false;
   }
-  if (link.type === 'teacher') connectTeacher(link.teacher);
-  else openLink(link);
+  if (link.type === 'teacher') return connectTeacher(link.teacher);
+  openLink(link);
   return true;
 }
 
@@ -256,7 +273,7 @@ async function pasteFromClipboard() {
   for (const item of items) {
     if (item.types.includes('text/plain')) {
       const text = await (await item.getType('text/plain')).text();
-      if (handleLinkText(text)) return;
+      handleLinkText(text);
       return;
     }
   }
@@ -436,7 +453,7 @@ sendDialog.addEventListener('click', e => { if (e.target === sendDialog) sendDia
 $('#sd-connect').addEventListener('click', async () => {
   sendDialog.close();
   const text = await scanQr();
-  if (text && handleLinkText(text) && getSetting('teacher')) $('#viewer-send').click(); // back to Send, now with the teacher
+  if (text && (await handleLinkText(text)) && getSetting('teacher')) $('#viewer-send').click(); // back to Send, now with the teacher
 });
 
 // ── Answer tools on the worksheet ─────────────────────

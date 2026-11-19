@@ -160,9 +160,16 @@ export function fmtDuration(secs) {
   return m ? `${m}m ${String(s).padStart(2, '0')}s` : `${s}s`;
 }
 
-const csvCell = v => {
-  const s = v === null || v === undefined ? '' : String(v);
-  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+/**
+ * One CSV cell. Text starting with = + - @ (or a tab / return) gets a leading
+ * apostrophe, so Excel or Sheets shows it as text instead of running it as a
+ * formula (a student could otherwise type =HYPERLINK(…) as an "answer").
+ */
+export const csvCell = v => {
+  if (v === null || v === undefined) return '';
+  let s = String(v);
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 };
 
 /** Spreadsheet-friendly report: summary rows, then one row per word. */

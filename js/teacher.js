@@ -9,7 +9,7 @@ import { $, toast, escapeHtml, downloadBlob } from './ui.js';
 import { parseLink, worksheetLink, teacherLink, isInboxUrl } from './links.js';
 import { driveInfo, driveReady, RemoteError } from './remote.js';
 import { unsupportedReason, isDocx, cleanName } from './worksheets.js';
-import { postToInbox } from './send.js';
+import { inboxVersion, newJoinCode } from './send.js';
 
 const APP_BASE = new URL('./', location.href).href;
 
@@ -169,6 +169,8 @@ $('#ws-png').addEventListener('click', async () => {
 $('#ws-print').addEventListener('click', () => printCard($('#ws-result').closest('section')));
 
 // ── 2. Class inbox QR ─────────────────────────────────
+// The QR code holds a join code that expires, issued by the teacher's own
+// script. The secret code (the sending key) is never put in the QR code.
 
 let inQr = null;
 
@@ -179,54 +181,54 @@ function readInbox() {
   const status = $('#in-status');
   if (!name) { setStatus(status, 'error', 'Type your name and class, as students know it.'); return null; }
   if (!isInboxUrl(url)) { setStatus(status, 'error', 'The web app URL should start with https://script.google.com/ and end in /exec. Copy it from Deploy › Manage deployments.'); return null; }
-  if (!secret) { setStatus(status, 'error', 'Paste the secret code from the Apps Script Execution log (run setup to see it again).'); return null; }
+  if (!secret) { setStatus(status, 'error', 'Paste the secret code from the Apps Script Execution log (run <code>setup</code> to see it again).'); return null; }
   return { name, url, secret };
 }
 
-function showInboxQr(teacher) {
-  const url = teacherLink(APP_BASE, teacher);
-  inQr = { qr: makeQr(url), label: teacher.name };
-  $('#in-qr').innerHTML = qrSvg(inQr.qr);
-  $('#in-label').textContent = 'Send your work to ' + teacher.name;
-  $('#in-result').hidden = false;
-  reveal($('#in-result'));
-  try { localStorage.setItem('pagepal.teacherPage', JSON.stringify({ name: teacher.name, url: teacher.url })); } catch { /* ignore */ }
-}
+const CHECKLIST = `<ul>
+  <li>the address is the <strong>Web app URL</strong> ending in <code>/exec</code>;</li>
+  <li>in Deploy › Manage deployments, <strong>Execute as</strong> is Me and <strong>Who has access</strong> is Anyone;</li>
+  <li>opening the address in a new tab shows <code>{"ok":true</code>.</li></ul>`;
 
-$('#in-test').addEventListener('click', async () => {
+$('#in-make').addEventListener('click', async () => {
   const teacher = readInbox();
   if (!teacher) return;
   const status = $('#in-status');
-  setStatus(status, 'ok', 'Sending a test row to your sheet…');
-  const result = await postToInbox(teacher, {
-    test: true, student: 'Teacher page', worksheet: 'Connection test', className: teacher.name,
-    sentAt: new Date().toISOString(), stats: {}, answer: '',
-  });
-  if (result.ok) {
-    setStatus(status, 'ok', 'Connected. A <strong>TEST</strong> row has been added to your sheet. Print the QR code below for your class.');
-    showInboxQr(teacher);
-  } else if (result.error === 'wrong-code') {
-    setStatus(status, 'error', 'Your sheet answered, but the secret code doesn’t match. Copy it again from the Execution log (run <code>setup</code> to show it).');
-  } else {
-    setStatus(status, 'error', `Couldn’t reach your sheet. Check:<ul>
-      <li>the address is the <strong>Web app URL</strong> ending in <code>/exec</code>;</li>
-      <li>in Deploy › Manage deployments, <strong>Execute as</strong> is Me and <strong>Who has access</strong> is Anyone;</li>
-      <li>opening the address in a new tab shows <code>{"ok":true</code>.</li></ul>`);
+  $('#in-result').hidden = true;
+  setStatus(status, 'ok', 'Checking your sheet…');
+
+  const version = await inboxVersion(teacher.url);
+  if (version === 0) { setStatus(status, 'error', 'Couldn’t reach your sheet. Check:' + CHECKLIST); return; }
+  if (version < 2) {
+    setStatus(status, 'error', 'Your sheet is running an older PagePal Inbox script. Paste in the new <code>PagePal-Inbox.gs</code> and <code>appsscript.json</code> (see the guide), run <code>setup</code>, then <strong>Deploy › Manage deployments › Edit › New version</strong>.');
+    return;
   }
+  const days = Number($('#in-days').value) || 7;
+  const result = await newJoinCode(teacher.url, teacher.secret, days, teacher.name);
+  if (!result.ok) {
+    setStatus(status, 'error', result.error === 'wrong-code'
+      ? 'Your sheet answered, but the secret code doesn’t match. Copy it again from the Execution log (run <code>setup</code> to show it).'
+      : result.error === 'busy' ? 'Your sheet is busy. Wait a minute and try again.' : 'Couldn’t make the code. Check:' + CHECKLIST);
+    return;
+  }
+  setStatus(status, 'ok', 'Connected to your sheet. Print or show the QR code below.');
+  const url = teacherLink(APP_BASE, { name: teacher.name, url: teacher.url, join: result.join, expires: result.expires });
+  inQr = { qr: makeQr(url), label: teacher.name, expires: result.expires };
+  const until = new Date(result.expires).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+  $('#in-qr').innerHTML = qrSvg(inQr.qr);
+  $('#in-label').textContent = 'Send your work to ' + teacher.name;
+  $('#in-expiry').textContent = 'Connects new iPads until ' + until;
+  $('#in-result').hidden = false;
+  reveal($('#in-result'));
+  try { localStorage.setItem('pagepal.teacherPage', JSON.stringify({ name: teacher.name, url: teacher.url })); } catch { /* ignore */ }
 });
 
-$('#in-make').addEventListener('click', () => {
-  const teacher = readInbox();
-  if (!teacher) return;
-  setStatus($('#in-status'), 'warn', 'Made without testing. Use “Test connection” if students’ work doesn’t arrive.');
-  showInboxQr(teacher);
-});
 $('#in-png').addEventListener('click', async () => {
-  downloadBlob(await qrPng(inQr.qr, inQr.label, 'PagePal: Settings › Scan class QR code'), `Class-QR-${fileSlug(inQr.label)}.png`);
+  downloadBlob(await qrPng(inQr.qr, inQr.label, $('#in-expiry').textContent), `Class-QR-${fileSlug(inQr.label)}.png`);
 });
 $('#in-print').addEventListener('click', () => printCard($('#in-result').closest('section')));
 
-// Remember the name and address (not the secret) for next time.
+// Remember the name and address (never the secret code) for next time.
 try {
   const saved = JSON.parse(localStorage.getItem('pagepal.teacherPage') || 'null');
   if (saved) { $('#in-name').value = saved.name || ''; $('#in-url').value = saved.url || ''; }
