@@ -561,3 +561,5 @@ if ('serviceWorker' in navigator && secure) {
   }
 })();
 
+// Tells the start-up check in the page that the code loaded.
+window.__pagepalReady = true;

@@ -15,6 +15,22 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="js/app.js"></script>
+  <script>
+    // If PagePal's code can't start (opened as a file, an old cached copy,
+    // or a blocked download), say so instead of showing dead buttons.
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (window.__pagepalReady) return;
+        var b = document.createElement('div');
+        b.className = 'start-error';
+        b.setAttribute('role', 'alert');
+        b.textContent = location.protocol === 'file:'
+          ? 'PagePal can’t run from a file on this computer. Open it from its web address instead: https://evandevon.github.io/PagePal/'
+          : 'PagePal didn’t start properly, so the buttons won’t work. Reload the page (Ctrl + Shift + R, or ⌘ + Shift + R). If that doesn’t fix it, try Chrome, Edge or Safari.';
+        document.body.insertBefore(b, document.body.firstChild);
+      }, 3000);
+    });
+  </script>
 </head>
 <body class="mode-dyslexia">
   <header class="appbar">

@@ -6,7 +6,7 @@
 // second open. Bump CACHE_VERSION (and APP_VERSION in js/config.js) with
 // each release so old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.2.1';
+const CACHE_VERSION = 'pagepal-v0.2.2';
 
 const APP_SHELL = [
   './',
@@ -42,10 +42,10 @@ const APP_SHELL = [
   'js/teacher.js',
   'teacher.html',
   'teacher.css',
-  'lib/pdfjs/pdf.min.mjs',
-  'lib/pdfjs/pdf.worker.min.mjs',
+  'lib/pdfjs/pdf.min.js',
+  'lib/pdfjs/pdf.worker.min.js',
   'lib/jsQR.js',
-  'lib/qrcode.mjs',
+  'lib/qrcode.js',
   // The Word libraries (lib/docx) and PDF fonts are cached the first time they're used.
 ];
 

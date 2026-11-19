@@ -5,8 +5,8 @@ const LIB = new URL('../lib/pdfjs/', import.meta.url);
 
 function loadPdfjs() {
   if (!pdfjsPromise) {
-    pdfjsPromise = import(new URL('pdf.min.mjs', LIB).href).then(lib => {
-      lib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.mjs', LIB).href;
+    pdfjsPromise = import(new URL('pdf.min.js', LIB).href).then(lib => {
+      lib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.js', LIB).href;
       return lib;
     });
   }

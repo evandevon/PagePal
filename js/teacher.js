@@ -4,7 +4,7 @@
 //  2. Class QR — tests the teacher's PagePal Inbox (Google Sheet web app)
 //     and makes the QR code students scan once to connect.
 
-import qrcode from '../lib/qrcode.mjs';
+import qrcode from '../lib/qrcode.js';
 import { $, toast, escapeHtml, downloadBlob } from './ui.js';
 import { parseLink, worksheetLink, teacherLink, isInboxUrl } from './links.js';
 import { driveInfo, driveReady, RemoteError } from './remote.js';
@@ -231,3 +231,6 @@ try {
   const saved = JSON.parse(localStorage.getItem('pagepal.teacherPage') || 'null');
   if (saved) { $('#in-name').value = saved.name || ''; $('#in-url').value = saved.url || ''; }
 } catch { /* ignore */ }
+
+// Tells the start-up check in the page that the code loaded.
+window.__pagepalReady = true;

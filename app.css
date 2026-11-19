@@ -409,6 +409,13 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 /* Word files are laid out off-screen before being turned into page images. */
 .docx-host { position: absolute; left: -20000px; top: 0; width: 1000px; background: #fff; }
 
+/* Shown by the page's start-up check if the code fails to load. */
+.start-error {
+  position: sticky; top: 0; z-index: 200;
+  background: #A32D1E; color: #fff; font-weight: 600;
+  padding: 14px 18px; line-height: 1.4;
+}
+
 /* ── Toast ─────────────────────────────────────────── */
 .toast {
   z-index: 100;
