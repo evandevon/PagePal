@@ -6,7 +6,7 @@
 // second open. Bump CACHE_VERSION (and APP_VERSION in js/config.js) with
 // each release so old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.2.2';
+const CACHE_VERSION = 'pagepal-v0.3.0';
 
 const APP_SHELL = [
   './',
@@ -38,6 +38,7 @@ const APP_SHELL = [
   'js/crop.js',
   'js/qr-scan.js',
   'js/viewer.js',
+  'js/annotate.js',
   'js/send.js',
   'js/teacher.js',
   'teacher.html',

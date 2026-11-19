@@ -111,6 +111,12 @@ export async function rename(record, title) {
   return save(record);
 }
 
+/** Save the worksheet as it is now (answers, session data…). */
+export async function update(record) {
+  record.updatedAt = now();
+  return save(record);
+}
+
 export async function touch(record) {
   record.updatedAt = now();
   return save(record);

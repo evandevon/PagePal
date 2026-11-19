@@ -170,6 +170,46 @@
         <span>Send</span>
       </button>
     </div>
+    <div class="viewer-tools" role="toolbar" aria-label="Answer tools">
+      <div class="tool-group" role="radiogroup" aria-label="What tapping the page adds">
+        <button class="tool active" type="button" data-tool="text" role="radio" aria-checked="true" title="Type an answer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 5v14M9 19h6"/></svg><span>Type</span>
+        </button>
+        <button class="tool" type="button" data-tool="tick" role="radio" aria-checked="false" title="Tick">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg><span>Tick</span>
+        </button>
+        <button class="tool" type="button" data-tool="cross" role="radio" aria-checked="false" title="Cross">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg><span>Cross</span>
+        </button>
+        <button class="tool" type="button" data-tool="circle" role="radio" aria-checked="false" title="Circle">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="8"/></svg><span>Circle</span>
+        </button>
+      </div>
+      <button id="tool-mic" class="mic-btn tool-mic" type="button" aria-label="Hold to talk into the selected answer" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <span>Hold to talk</span>
+      </button>
+      <div class="tool-group">
+        <button id="tool-hear" class="tool" type="button" title="Hear the answer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span>Hear</span>
+        </button>
+        <button id="tool-smaller" class="tool" type="button" title="Smaller" aria-label="Smaller"><span class="glyph small-a">A</span></button>
+        <button id="tool-bigger" class="tool" type="button" title="Bigger" aria-label="Bigger"><span class="glyph big-a">A</span></button>
+        <button id="tool-color" class="tool" type="button" title="Colour" aria-label="Colour: Blue"><span class="swatch"></span></button>
+        <button id="tool-delete" class="tool" type="button" title="Delete" aria-label="Delete">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+        </button>
+      </div>
+      <div class="tool-group">
+        <button id="tool-undo" class="tool" type="button" title="Undo" aria-label="Undo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
+        </button>
+        <button id="tool-redo" class="tool" type="button" title="Redo" aria-label="Redo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>
+        </button>
+      </div>
+      <div id="viewer-mic-preview" class="viewer-mic-preview" role="status" aria-live="polite"></div>
+    </div>
     <div id="viewer-scroll" class="viewer-scroll">
       <div id="viewer-pages" class="viewer-pages"></div>
     </div>

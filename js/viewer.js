@@ -5,15 +5,22 @@
 import { $ } from './ui.js';
 import { openPdf, pageSizes, renderPage } from './pdf-doc.js';
 import * as worksheets from './worksheets.js';
-import { canvasToBlob } from './image-tools.js';
+import { canvasToBlob, blobToCanvas } from './image-tools.js';
+import { Annotator, drawItems } from './annotate.js';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
 
-let current = null; // { record, doc, sizes, urls, zoom, pages: [{el, canvas, renderedWidth, task}] }
+let current = null; // { record, doc, sizes, urls, zoom, annot, pages: [{el, canvas, renderedWidth, task}] }
+let annotCallbacks = {};
 
 export function currentWorksheet() {
   return current && current.record;
+}
+
+/** The text boxes and stamps on the open worksheet. */
+export function currentAnnotator() {
+  return current && current.annot;
 }
 
 /** Fit width in CSS pixels for zoom = 1. */
@@ -48,7 +55,9 @@ function layoutPages() {
     const size = current.sizes[i];
     p.el.style.width = w + 'px';
     p.el.style.height = (w * size.height / size.width) + 'px';
+    p.el.style.setProperty('--pw', w + 'px'); // text box sizes are fractions of this
   });
+  if (current.annot) current.annot.relayout();
 }
 
 let sharpenTimer = null;
@@ -138,6 +147,7 @@ export async function openWorksheet(record) {
     current.pages.push({ el, canvas: null, renderedWidth: 0, task: null });
   });
 
+  current.annot = new Annotator(current.pages.map(p => p.el), record.annotations || [], annotCallbacks);
   layoutPages();
   $('#viewer-scroll').scrollTo(0, 0);
   updatePageLabel();
@@ -147,6 +157,7 @@ export async function openWorksheet(record) {
 
 export function closeWorksheet() {
   if (!current) return;
+  if (current.annot) current.annot.destroy();
   current.pages.forEach(p => { if (p.task) try { p.task.cancel(); } catch { /* ignore */ } });
   current.urls.forEach(u => URL.revokeObjectURL(u));
   if (current.doc) current.doc.destroy();
@@ -156,22 +167,51 @@ export function closeWorksheet() {
   $('#home').hidden = false;
 }
 
-/** JPEG of every page, for saving and sending (about 1600 px wide). */
+/** Page index and a spot near the top of what's on screen (for new answers). */
+export function visibleSpot() {
+  if (!current) return null;
+  const scroller = $('#viewer-scroll');
+  const i = (current.pageNumber || 1) - 1;
+  const el = current.pages[i].el;
+  const top = scroller.getBoundingClientRect().top;
+  const r = el.getBoundingClientRect();
+  const fy = Math.min(0.9, Math.max(0.03, (top - r.top + 40) / r.height));
+  return { page: i, x: 0.08, y: fy };
+}
+
+/** The font answers are written in (the display mode's reading font). */
+function answerFont() {
+  const f = getComputedStyle(document.body).getPropertyValue('--read-font').trim();
+  return f || 'Arial, sans-serif';
+}
+
+/**
+ * JPEG of every page with the student's answers drawn on, for saving and
+ * sending (about 1600 px wide).
+ */
 export async function pageImages() {
   if (!current) return [];
   const rec = current.record;
-  if (rec.kind === 'images') return rec.pages.map(p => p.blob);
+  const items = current.annot ? current.annot.items : (rec.annotations || []);
+  const font = answerFont();
+  try { await document.fonts.load(`20px ${font}`); } catch { /* use fallback */ }
   const out = [];
-  for (let i = 1; i <= current.doc.numPages; i++) {
-    const c = document.createElement('canvas');
-    // renderPage multiplies by devicePixelRatio; aim for ~1600 px either way.
-    await renderPage(current.doc, i, c, 1600 / Math.min(window.devicePixelRatio || 1, 3));
+  for (let i = 0; i < current.sizes.length; i++) {
+    let page;
+    if (rec.kind === 'images') {
+      page = await blobToCanvas(rec.pages[i].blob, 2400);
+    } else {
+      page = document.createElement('canvas');
+      // renderPage multiplies by devicePixelRatio; aim for ~1600 px either way.
+      await renderPage(current.doc, i + 1, page, 1600 / Math.min(window.devicePixelRatio || 1, 3));
+    }
     const flat = document.createElement('canvas');
-    flat.width = c.width; flat.height = c.height;
+    flat.width = page.width; flat.height = page.height;
     const ctx = flat.getContext('2d');
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, flat.width, flat.height);
-    ctx.drawImage(c, 0, 0);
+    ctx.drawImage(page, 0, 0);
+    drawItems(ctx, items, i, flat.width, flat.height, font);
     out.push(await canvasToBlob(flat, 'image/jpeg', 0.85));
   }
   return out;
@@ -179,8 +219,9 @@ export async function pageImages() {
 
 // ── One-time wiring ───────────────────────────────────
 
-export function initViewer({ onBack, onSend }) {
+export function initViewer({ onBack, onSend, annotations = {} }) {
   const scroller = $('#viewer-scroll');
+  annotCallbacks = annotations;
 
   $('#viewer-back').addEventListener('click', onBack);
   $('#viewer-send').addEventListener('click', onSend);

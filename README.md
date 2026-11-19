@@ -10,8 +10,8 @@ PagePal builds on two earlier projects: [Say It, Spell It](https://evandevon.git
 
 - [x] **Stage 0: Foundations.** App shell, display modes, voice and speed settings, hold-to-talk dictation, tap-to-hear text, session data, email / share / save to Files, works offline and installs to the Home Screen.
 - [x] **Stage 1: Get a worksheet.** Scan QR code, open a file (PDF, Word .docx, picture), take photos with four-corner straightening and clean-up (multi-page), paste a picture or link, worksheet viewer with pinch zoom, recent worksheets. Save to Files / share now include page images named to match the CSV. Teacher page for worksheet and class QR codes; Send to teacher.
-- [ ] **Stage 2: Type on the page.** Text boxes, stamps, undo, export the finished page as a PDF or image.
-- [ ] **Stage 3: Dictation on the page.** Mic into the selected text box, hear my answer, suggestions and spell check.
+- [x] **Stage 2: Type on the page.** Tap to add a text box; move, resize, bigger/smaller, colour, delete; tick, cross and circle stamps; undo/redo; autosaves with the session data. Saved, shared and sent page pictures include the answers.
+- [ ] **Stage 3: Dictation on the page.** Done: hold-to-talk into the selected box, Hear. Still to do: word suggestions and spell check from Word Helper.
 - [ ] **Stage 4: QR to PDF.** Mostly done in Stage 1 (scanning, Drive links, teacher QR page); needs the Google API key below and testing on school iPads.
 - [ ] **Stage 5: Read aloud.** Text from PDFs, on-device text recognition for photos, tap a word or play a block.
 - [ ] **Stage 6: Data and reports.** Full report, timeline graph, and "Send to teacher" into the teacher's own Google Sheet, set up by scanning a teacher QR code.
@@ -76,6 +76,7 @@ js/
   store.js             On-device storage for worksheets (IndexedDB)
   worksheets.js        Turning PDFs, Word files and photos into saved worksheets
   viewer.js            Worksheet screen: pages, zoom, pinch, page images for sending
+  annotate.js          Text boxes and stamps on the page, undo, drawing answers into page images
   pdf-doc.js           PDF.js wrapper
   docx-doc.js          Word (.docx) layout via docx-preview + html2canvas
   image-tools.js       Four-corner straightening, rotate, "Clean up" scanner effect

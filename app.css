@@ -343,6 +343,61 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 }
 .page-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
 
+/* ── Answer tools and the layer over each page ─────── */
+.viewer-tools {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 10px;
+  background: var(--card); border-bottom: 1px solid var(--line);
+}
+.tool-group { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 12px; background: var(--bg); }
+.tool {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  min-width: 48px; min-height: var(--tap); padding: 2px 6px;
+  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+  font-size: 11px; font-weight: 600; color: var(--ink);
+}
+.tool svg { width: 22px; height: 22px; }
+.tool:hover:not(:disabled) { background: var(--card); }
+.tool.active { background: var(--brand); color: #fff; }
+.tool:disabled { opacity: 0.3; cursor: default; }
+.glyph { font-family: Georgia, serif; font-weight: 700; line-height: 1; }
+.small-a { font-size: 15px; }
+.big-a { font-size: 24px; }
+.swatch { width: 24px; height: 24px; border-radius: 50%; background: var(--swatch, #1F3A93); border: 2px solid var(--card); box-shadow: 0 0 0 1.5px var(--line); }
+.tool-mic { min-height: var(--tap); font-size: 16px; padding: 6px 16px; }
+.viewer-mic-preview { flex: 1 1 140px; min-width: 0; color: var(--muted); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.annot-layer { position: absolute; inset: 0; z-index: 2; cursor: text; }
+.annot { position: absolute; }
+.annot-text { min-width: 40px; }
+.annot-input {
+  display: block; width: 100%;
+  margin: 0; padding: 0.25em;
+  border: 0; border-radius: 4px; outline: none;
+  background: transparent; color: inherit;
+  font-family: var(--read-font); font-size: 1em; line-height: 1.35; letter-spacing: normal;
+  resize: none; overflow: hidden;
+  min-height: 0;       /* undo the general text-box sizing */
+}
+.annot-input:focus-visible { outline: none; }
+.annot-text:hover .annot-input { background: rgba(31, 58, 147, 0.05); }
+.annot.selected .annot-input { background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 2px var(--brand); }
+.annot-grip, .annot-width { position: absolute; opacity: 0; pointer-events: none; }
+.annot.selected .annot-grip, .annot.selected .annot-width { opacity: 1; pointer-events: auto; }
+.annot-grip {
+  left: -14px; top: -14px; width: 28px; height: 28px; padding: 3px;
+  border: 0; border-radius: 50%; background: var(--brand); color: #fff;
+  cursor: move; touch-action: none; display: grid; place-items: center;
+}
+.annot-grip svg { width: 18px; height: 18px; }
+.annot-width {
+  right: -8px; top: 50%; width: 16px; height: 32px; margin-top: -16px;
+  border-radius: 8px; background: var(--brand); cursor: ew-resize; touch-action: none;
+}
+.annot-stamp { cursor: move; touch-action: none; }
+.annot-stamp svg { width: 100%; height: 100%; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.annot-stamp.selected { outline: 2px dashed var(--brand); outline-offset: 2px; border-radius: 6px; }
+
 /* ── Full-screen tools (crop, scanner) ────────────── */
 .fullscreen {
   position: fixed; inset: 0; z-index: 40;

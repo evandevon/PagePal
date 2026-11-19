@@ -16,7 +16,8 @@ import { cropImage } from './crop.js';
 import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
-import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, pageImages } from './viewer.js';
+import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, pageImages, visibleSpot } from './viewer.js';
+import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName } from './send.js';
 
 const settings = getSettings();
@@ -63,9 +64,11 @@ function explain(err) {
 async function openRecord(record, { push = true } = {}) {
   const hide = showBusy('Opening the worksheet…');
   try {
+    wsSession = SessionLog.fromState(record.session, { student: getSetting('studentName'), worksheet: record.title });
     await openWorksheet(record);
-    wsSession = new SessionLog({ student: getSetting('studentName'), worksheet: record.title });
     wsSession.logEvent('open');
+    resetTools();
+    if (!(record.annotations || []).length) toast('Tap where your answer goes to start typing, or hold the mic to talk.', 5000);
     if (push) history.pushState({ ws: record.id }, '', '#ws=' + record.id);
   } catch (err) {
     closeWorksheet();
@@ -81,10 +84,30 @@ function backToHome() {
 }
 
 function showHome() {
+  flushSave();
+  if (viewerDictation) viewerDictation.abort();
+  tts.stop();
   closeWorksheet();
   wsSession = null;
   renderRecent();
 }
+
+// ── Saving answers and session data with the worksheet ─
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 600);
+}
+function flushSave() {
+  clearTimeout(saveTimer);
+  const rec = currentWorksheet(), annot = currentAnnotator();
+  if (!rec || !annot || !wsSession) return;
+  rec.annotations = annot.items;
+  rec.session = wsSession.toState();
+  worksheets.update(rec).catch(err => console.warn('Could not save', err));
+}
+window.addEventListener('pagehide', flushSave);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave(); });
 
 window.addEventListener('popstate', e => {
   if (e.state && e.state.ws) worksheets.get(e.state.ws).then(r => r && openRecord(r, { push: false }));
@@ -294,7 +317,8 @@ async function renderRecent() {
 
 // ── Worksheet viewer and its Send dialog ──────────────
 const sendDialog = $('#send-dialog');
-const worksheetWork = () => ({ session: wsSession, answer: '', pageImages });
+const worksheetAnswer = () => (currentAnnotator() ? answerText(currentAnnotator().items) : '');
+const worksheetWork = () => ({ session: wsSession, answer: worksheetAnswer(), pageImages });
 
 function renderStatsInto(el, session, answer) {
   const st = session.stats(answer);
@@ -310,13 +334,20 @@ function renderStatsInto(el, session, answer) {
 
 initViewer({
   onBack: backToHome,
+  annotations: {
+    onChange: () => { if (wsSession) wsSession.activity(); scheduleSave(); updateTools(); },
+    onSelect: () => updateTools(),
+    onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
+  },
   onSend: () => {
     if (!wsSession) return;
+    flushSave();
+    if (currentAnnotator()) currentAnnotator().deselect();
     const ws = currentWorksheet();
     wsSession.worksheet = ws ? ws.title : wsSession.worksheet;
     const teacher = getSetting('teacher');
     $('#send-dialog-who').textContent = (wsSession.student ? wsSession.student + ' · ' : '') + wsSession.worksheet;
-    renderStatsInto($('#send-dialog-stats'), wsSession, '');
+    renderStatsInto($('#send-dialog-stats'), wsSession, worksheetAnswer());
     $('#sd-teacher').hidden = !teacher;
     if (teacher) $('#sd-teacher').textContent = `Send to ${teacher.name}`;
     sendDialog.showModal();
@@ -348,6 +379,106 @@ $('#sd-email').addEventListener('click', () => {
 });
 $('#sd-teacher').addEventListener('click', e => runSend(sendToTeacher, worksheetWork(), e.currentTarget));
 sendDialog.addEventListener('click', e => { if (e.target === sendDialog) sendDialog.close(); });
+
+// ── Answer tools on the worksheet ─────────────────────
+const toolButtons = [...document.querySelectorAll('.viewer-tools [data-tool]')];
+let colorIndex = 0;
+
+function setTool(tool) {
+  const annot = currentAnnotator();
+  if (annot) annot.setTool(tool);
+  toolButtons.forEach(b => {
+    const on = b.dataset.tool === tool;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+}
+toolButtons.forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+function showColor() {
+  $('#tool-color').style.setProperty('--swatch', COLORS[colorIndex]);
+  $('#tool-color').setAttribute('aria-label', 'Colour: ' + COLOR_NAMES[colorIndex]);
+}
+
+function resetTools() {
+  colorIndex = 0;
+  showColor();
+  setTool('text');
+  updateTools();
+}
+
+function updateTools() {
+  const annot = currentAnnotator();
+  const sel = annot && annot.selected;
+  $('#tool-smaller').disabled = $('#tool-bigger').disabled = $('#tool-delete').disabled = !sel;
+  $('#tool-undo').disabled = !(annot && annot.canUndo());
+  $('#tool-redo').disabled = !(annot && annot.canRedo());
+  $('#tool-hear').disabled = !annot || !(sel && sel.type === 'text' ? (sel.text || '').trim() : worksheetAnswer());
+  if (sel) {
+    const i = COLORS.indexOf(sel.color);
+    if (i >= 0) { colorIndex = i; showColor(); }
+  }
+}
+
+$('#tool-color').addEventListener('click', () => {
+  colorIndex = (colorIndex + 1) % COLORS.length;
+  showColor();
+  if (currentAnnotator()) currentAnnotator().setColor(COLORS[colorIndex]);
+});
+$('#tool-smaller').addEventListener('click', () => currentAnnotator() && currentAnnotator().resize(-1));
+$('#tool-bigger').addEventListener('click', () => currentAnnotator() && currentAnnotator().resize(1));
+$('#tool-delete').addEventListener('click', () => currentAnnotator() && currentAnnotator().deleteSelected());
+$('#tool-undo').addEventListener('click', () => currentAnnotator() && currentAnnotator().undo());
+$('#tool-redo').addEventListener('click', () => currentAnnotator() && currentAnnotator().redo());
+// Keep the keyboard open: tapping a tool shouldn't take focus from the answer box.
+document.querySelectorAll('.viewer-tools button').forEach(b => {
+  if (b.id !== 'tool-mic') b.addEventListener('pointerdown', e => e.preventDefault());
+});
+
+$('#tool-hear').addEventListener('click', () => {
+  const annot = currentAnnotator();
+  if (!annot || !wsSession) return;
+  const sel = annot.selected;
+  const text = sel && sel.type === 'text' && (sel.text || '').trim() ? sel.text.trim() : worksheetAnswer();
+  if (!text) { toast('Write or say an answer first.'); return; }
+  wsSession.logListen(text, 'answer');
+  tts.speak(text);
+  scheduleSave();
+});
+
+// Hold to talk: words go into the selected answer box (or a new one).
+let viewerDictation = null;
+const viewerMic = $('#tool-mic');
+if (dictationStatus() !== 'ok') {
+  viewerMic.hidden = true;
+} else {
+  viewerDictation = new Dictation({
+    onPreview: text => { $('#viewer-mic-preview').textContent = text || ''; },
+    onState: on => {
+      viewerMic.classList.toggle('listening', on);
+      viewerMic.setAttribute('aria-pressed', String(on));
+      viewerMic.querySelector('span').textContent = on ? 'Listening… let go' : 'Hold to talk';
+      if (on) { tts.stop(); if (wsSession) wsSession.logEvent('dictation_start'); }
+    },
+    onResult: text => {
+      const annot = currentAnnotator();
+      if (!annot || !wsSession) return;
+      if (!annot.insertText(text)) {
+        const spot = visibleSpot();
+        annot.addText(spot.page, spot.x, spot.y, text);
+        toast('Your words went into a new box. Drag it to where the answer goes.', 4000);
+      }
+      wsSession.logPhrase(text, 'dictated');
+      scheduleSave();
+    },
+    onEmpty: () => {
+      if (wsSession) wsSession.logEvent('dictation_retry');
+      toast('I didn’t catch that. Hold the button and try again.');
+    },
+    onError: msg => toast(msg, 5000),
+  });
+  viewerDictation.attachHoldButton(viewerMic);
+}
 
 // ── Practice card ─────────────────────────────────────
 const readable = makeReadable(

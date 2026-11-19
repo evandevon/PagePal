@@ -35,6 +35,31 @@ export class SessionLog {
     this.activeMs = 0;        // completed active stretches
     this.words = [];          // {word, how, t, from}
     this.events = [];         // {type, t, ...}
+    this.priorWorkingMs = 0;  // from earlier sittings (worksheet reopened)
+    this.priorTotalMs = 0;
+  }
+
+  /** Plain object for saving with a worksheet. */
+  toState() {
+    return {
+      student: this.student, worksheet: this.worksheet,
+      firstStarted: this.firstStarted || this.start,
+      priorWorkingMs: this.workingSecs() * 1000,
+      priorTotalMs: this.totalSecs() * 1000,
+      words: this.words, events: this.events,
+    };
+  }
+
+  /** Carry on a session saved with a worksheet: times add up across sittings. */
+  static fromState(state, opts = {}) {
+    const log = new SessionLog(opts);
+    if (!state) return log;
+    log.firstStarted = state.firstStarted || null;
+    log.priorWorkingMs = state.priorWorkingMs || 0;
+    log.priorTotalMs = state.priorTotalMs || 0;
+    log.words = state.words || [];
+    log.events = state.events || [];
+    return log;
   }
 
   _t() { return this.start ? (this.now() - this.start) / 1000 : 0; }
@@ -76,7 +101,7 @@ export class SessionLog {
   }
 
   workingSecs() {
-    let ms = this.activeMs;
+    let ms = this.priorWorkingMs + this.activeMs;
     if (this.activeStart !== null) {
       const end = Math.min(this.now(), this.lastActivity + IDLE_MS);
       ms += Math.max(0, end - this.activeStart);
@@ -85,7 +110,7 @@ export class SessionLog {
   }
 
   totalSecs() {
-    return this.start ? Math.round((this.now() - this.start) / 1000) : 0;
+    return Math.round((this.priorTotalMs + (this.start ? this.now() - this.start : 0)) / 1000);
   }
 
   /**
@@ -121,7 +146,7 @@ export class SessionLog {
       app: 'PagePal',
       student: this.student,
       worksheet: this.worksheet,
-      started: this.start ? new Date(this.start).toISOString() : null,
+      started: (this.firstStarted || this.start) ? new Date(this.firstStarted || this.start).toISOString() : null,
       stats: this.stats(finalText),
       answer: finalText,
       words: this.words,
@@ -143,7 +168,7 @@ const csvCell = v => {
 /** Spreadsheet-friendly report: summary rows, then one row per word. */
 export function toCSV(log, finalText = '') {
   const st = log.stats(finalText);
-  const date = log.start ? new Date(log.start) : new Date();
+  const date = (log.firstStarted || log.start) ? new Date(log.firstStarted || log.start) : new Date();
   const rows = [
     ['PagePal session report'],
     ['Student', log.student],
