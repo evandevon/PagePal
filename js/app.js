@@ -69,7 +69,7 @@ async function openRecord(record, { push = true } = {}) {
     await openWorksheet(record);
     wsSession.logEvent('open');
     resetTools();
-    if (!(record.annotations || []).length) toast('Tap where your answer goes to start typing, or hold the mic to talk.', 5000);
+    if (!(record.annotations || []).length) toast('Tap where your answer goes to type. Press and hold for ticks, crosses, drawing and more.', 6000);
     if (push) history.pushState({ ws: record.id }, '', '#ws=' + record.id);
   } catch (err) {
     closeWorksheet();
@@ -86,6 +86,7 @@ function backToHome() {
 
 function showHome() {
   hidePageMenu();
+  $('#draw-bar').hidden = true;
   flushSave();
   if (viewerDictation) viewerDictation.abort();
   tts.stop();
@@ -457,25 +458,42 @@ $('#sd-connect').addEventListener('click', async () => {
 });
 
 // ── Answer tools on the worksheet ─────────────────────
-const toolButtons = [...document.querySelectorAll('.viewer-tools [data-tool]')];
 let colorIndex = 0;
 
+/** 'text' (tapping the page types) or 'draw' (finger draws until Done). */
 function setTool(tool) {
   const annot = currentAnnotator();
   if (annot) annot.setTool(tool);
-  toolButtons.forEach(b => {
-    const on = b.dataset.tool === tool;
-    b.classList.toggle('active', on);
-    b.setAttribute('aria-checked', String(on));
-  });
+  $('#draw-bar').hidden = tool !== 'draw';
+  $('#tool-add').classList.toggle('active', tool === 'draw');
 }
-toolButtons.forEach(b => b.addEventListener('click', () => {
-  setTool(b.dataset.tool);
-  if (b.dataset.tool === 'draw') toast('Draw with your finger. Two fingers still zoom. Tap Type to stop drawing.', 4000);
-}));
+
+function startDrawing() {
+  setTool('draw');
+  toast('Draw with your finger. Two fingers still zoom.', 3000);
+}
+
+$('#draw-done').addEventListener('click', () => setTool('text'));
+$('#draw-undo').addEventListener('click', () => currentAnnotator() && currentAnnotator().undo());
+$('#draw-color').addEventListener('click', () => $('#tool-color').click());
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('#draw-bar').hidden) setTool('text');
+});
+
+// "Add" opens the long-press menu, for keyboards, switch access and anyone
+// who hasn't discovered long press. Items go near the top of what's on screen.
+$('#tool-add').addEventListener('click', () => {
+  if (!$('#draw-bar').hidden) { setTool('text'); return; }
+  const spot = visibleSpot();
+  if (!spot) return;
+  const r = $('#tool-add').getBoundingClientRect();
+  // Centre of what's on screen; the student can drag it from there.
+  showPageMenu({ page: spot.page, fx: 0.42, fy: Math.min(0.92, spot.y + 0.2), clientX: r.left + r.width / 2, clientY: r.bottom + 8, below: true });
+});
 
 function showColor() {
   $('#tool-color').style.setProperty('--swatch', COLORS[colorIndex]);
+  $('#draw-color').style.setProperty('--swatch', COLORS[colorIndex]);
   $('#tool-color').setAttribute('aria-label', 'Colour: ' + COLOR_NAMES[colorIndex]);
 }
 
@@ -571,7 +589,7 @@ function showPageMenu(spot) {
   // Next to the finger, kept on screen.
   const w = pageMenu.offsetWidth, h = pageMenu.offsetHeight;
   const x = Math.min(window.innerWidth - w - 8, Math.max(8, spot.clientX - w / 2));
-  let y = spot.clientY - h - 16;
+  let y = spot.below ? spot.clientY : spot.clientY - h - 16;
   if (y < 8) y = spot.clientY + 20;
   pageMenu.style.left = x + 'px';
   pageMenu.style.top = Math.min(window.innerHeight - h - 8, y) + 'px';
@@ -594,14 +612,13 @@ pageMenu.addEventListener('click', e => {
   const what = btn.dataset.add;
   hidePageMenu();
   if (what === 'draw') {
-    setTool('draw');
-    toast('Draw with your finger. Two fingers still zoom. Tap Type to stop drawing.', 4000);
+    startDrawing();
   } else if (what === 'talk') {
     setTool('text');
     annot.placeAt('text', page, fx, fy, { focus: false });
     startTalking();
   } else {
-    if (what !== 'text') setTool('text'); // a one-off stamp; tapping still types
+    setTool('text');
     annot.placeAt(what, page, fx, fy);
   }
 });

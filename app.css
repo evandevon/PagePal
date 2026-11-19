@@ -423,6 +423,30 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 .page-menu button:hover, .page-menu button:focus-visible { background: var(--brand-soft); }
 .page-menu svg { width: 26px; height: 26px; color: var(--brand); }
 
+.add-btn { min-height: var(--tap); gap: 6px; padding: 6px 16px; border-color: var(--brand); color: var(--brand-ink); font-size: 16px; }
+.add-btn svg { width: 22px; height: 22px; }
+
+.draw-bar {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 35; display: flex; align-items: center; gap: 6px;
+  padding: 6px 6px 6px 16px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+.draw-bar-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--brand-ink); margin-right: 4px; }
+.draw-bar-label svg { width: 20px; height: 20px; }
+.draw-bar-btn {
+  width: var(--tap); height: var(--tap); display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: var(--bg); cursor: pointer; color: var(--ink);
+}
+.draw-bar-btn svg { width: 22px; height: 22px; }
+.draw-bar-done {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 52px; padding: 8px 20px; border: 0; border-radius: 999px;
+  background: var(--brand); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer;
+}
+.draw-bar-done svg { width: 22px; height: 22px; }
+
 .talk-stop {
   position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
   z-index: 35; display: inline-flex; align-items: center; gap: 10px;
@@ -551,3 +575,4 @@ dialog.wide-dialog { width: min(760px, calc(100vw - 24px)); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.add-btn.active { background: var(--brand); color: #fff; }

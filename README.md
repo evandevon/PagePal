@@ -10,7 +10,7 @@ PagePal builds on two earlier projects: [Say It, Spell It](https://evandevon.git
 
 - [x] **Stage 0: Foundations.** App shell, display modes, voice and speed settings, hold-to-talk dictation, tap-to-hear text, session data, email / share / save to Files, works offline and installs to the Home Screen.
 - [x] **Stage 1: Get a worksheet.** Scan QR code, open a file (PDF, Word .docx, picture), take photos with four-corner straightening and clean-up (multi-page), paste a picture or link, worksheet viewer with pinch zoom, recent worksheets. Save to Files / share now include page images named to match the CSV. Teacher page for worksheet and class QR codes; Send to teacher.
-- [x] **Stage 2: Type on the page.** Tap to add a text box; move, resize, bigger/smaller, colour, delete; tick, cross and circle stamps; freehand Draw; long-press (or right-click) a blank spot for a menu (Type, Talk, Tick, Cross, Circle, Draw); undo/redo; autosaves with the session data. Saved, shared and sent page pictures include the answers.
+- [x] **Stage 2: Type on the page.** Tap to add a text box; move, resize, bigger/smaller, colour, delete; tick, cross and circle stamps; freehand Draw with a Done drawing bar; long-press (or right-click) a blank spot, or tap **+ Add**, for a menu (Type, Talk, Tick, Cross, Circle, Draw); undo/redo; autosaves with the session data. Saved, shared and sent page pictures include the answers.
 - [x] **New page:** lined (wide / narrow), handwriting (dotted middle line), story page, 1 cm and 5 mm squares, dot grid, blank; Add page for longer work.
 - [ ] **Stage 3: Dictation on the page.** Done: hold-to-talk into the selected box, Hear. Still to do: word suggestions and spell check from Word Helper.
 - [ ] **Stage 4: QR to PDF.** Mostly done in Stage 1 (scanning, Drive links, teacher QR page); needs the Google API key below and testing on school iPads.
@@ -117,7 +117,7 @@ How sending work to a teacher is protected (details in the teacher set-up guide)
 - **Write-only.** The web app accepts submissions; nothing can be read back through it.
 - **File checks.** Pictures and PDFs must really be JPEG, PNG or PDF (checked by their first bytes), 5 MB at most. Anything else is refused and noted in the sheet.
 - **Rate limits.** At most 60 sends a minute and 1,500 a day.
-- **No formula injection.** Text starting with `=`, `+`, `-` or `@` is stored as plain text, both in the sheet and in the CSV students save.
+- **No formulas at all.** The sheet holds no formulas: students' text is stored as text (an answer like `-5` or `=HYPERLINK(…)` shows exactly as typed but never runs) and page links are plain links. The CSV students save marks such cells as text too.
 - **Not covered:** student identity (no logins, so anyone with a current code or a connected iPad can send in any name), and the content of what students send.
 
 **For whoever looks after this repo:** anyone who can change the code here can change where every iPad sends work. Turn on two-factor sign-in for the GitHub account, and only give write access to people you trust.

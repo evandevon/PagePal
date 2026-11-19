@@ -17,7 +17,9 @@
  *   - Sending needs the KEY, which an iPad only receives by joining.
  *   - resetCode() makes a new key: every iPad must scan a new QR code.
  *   - Files must really be JPEG, PNG or PDF (checked by their contents),
- *     5 MB at most; sends are rate-limited; text can't become formulas.
+ *     5 MB at most; sends are rate-limited.
+ *   - The sheet holds no formulas at all: students' text is stored as text
+ *     and the page links are plain links.
  *   - Nothing can be read back through the web address.
  */
 
@@ -161,10 +163,16 @@ function submit_(data) {
     num_(st.typed), num_(st.dictated), num_(st.suggestion), num_(st.corrected), num_(st.assistanceRate),
     num_(st.listens), cell_(text_((st.wordsListened || []).join(', '), 2000)),
     cell_(text_(data.answer, 40000)),
-    link_(pageUrl, 'View page'), link_(pdfUrl, 'View PDF'),
+    '', '', // links are added below as plain links, not formulas
     cell_(notes.join(' ')),
   ];
-  withLock_(function () { getSheet_().appendRow(row); });
+  withLock_(function () {
+    const sheet = getSheet_();
+    sheet.appendRow(row);
+    const r = sheet.getLastRow();
+    setLink_(sheet.getRange(r, 16), pageUrl, 'View page');
+    setLink_(sheet.getRange(r, 17), pdfUrl, 'View PDF');
+  });
   return { ok: true, warnings: notes };
 }
 
@@ -315,7 +323,11 @@ function text_(value, max) {
   return value === undefined || value === null ? '' : String(value).slice(0, max).trim();
 }
 
-/** Text starting with = + - @ (or a tab / return) is stored as plain text, never a formula. */
+/**
+ * Text starting with = + - @ (or a tab / return) is stored as plain text,
+ * never a formula. The leading apostrophe is Sheets' "this is text" mark:
+ * it isn't shown in the cell, so "-5" or "= 10" appear exactly as typed.
+ */
 function cell_(s) {
   return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
 }
@@ -328,9 +340,10 @@ function mins_(secs) {
   return typeof secs === 'number' && isFinite(secs) ? Math.round(secs / 6) / 10 : '';
 }
 
-function link_(url, label) {
-  // Only links this script made itself, to Google Drive.
-  return /^https:\/\/drive\.google\.com\/[\w\/?=&.-]+$/.test(url) ? '=HYPERLINK("' + url + '","' + label + '")' : '';
+/** A plain clickable link (no formula), only to Drive files this script made. */
+function setLink_(range, url, label) {
+  if (!/^https:\/\/drive\.google\.com\/[\w\/?=&.-]+$/.test(url || '')) return;
+  range.setRichTextValue(SpreadsheetApp.newRichTextValue().setText(label).setLinkUrl(url).build());
 }
 
 function json_(obj) {
