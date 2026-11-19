@@ -54,6 +54,12 @@ function setStatus(el, kind, html) {
   el.hidden = !html;
   el.className = 'status ' + kind;
   el.innerHTML = html;
+  if (html) reveal(el);
+}
+
+/** Results appear below the buttons, often off-screen: bring them into view. */
+function reveal(el) {
+  requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
 }
 
 function printCard(section) {
@@ -149,6 +155,7 @@ async function makeWorksheetQr() {
   $('#ws-link-out').textContent = url;
   $('#ws-test').href = url;
   result.hidden = false;
+  reveal(result);
 }
 
 $('#ws-make').addEventListener('click', makeWorksheetQr);
@@ -182,6 +189,7 @@ function showInboxQr(teacher) {
   $('#in-qr').innerHTML = qrSvg(inQr.qr);
   $('#in-label').textContent = 'Send your work to ' + teacher.name;
   $('#in-result').hidden = false;
+  reveal($('#in-result'));
   try { localStorage.setItem('pagepal.teacherPage', JSON.stringify({ name: teacher.name, url: teacher.url })); } catch { /* ignore */ }
 }
 
