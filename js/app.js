@@ -507,6 +507,8 @@ function resetTools() {
 function updateTools() {
   const annot = currentAnnotator();
   const sel = annot && annot.selected;
+  // Phones show size/colour/delete only while something is selected.
+  if (sel) $('#viewer').dataset.selected = ''; else delete $('#viewer').dataset.selected;
   $('#tool-smaller').disabled = $('#tool-bigger').disabled = $('#tool-delete').disabled = !sel;
   $('#tool-undo').disabled = !(annot && annot.canUndo());
   $('#tool-redo').disabled = !(annot && annot.canRedo());
@@ -525,6 +527,12 @@ $('#tool-color').addEventListener('click', () => {
 $('#tool-smaller').addEventListener('click', () => currentAnnotator() && currentAnnotator().resize(-1));
 $('#tool-bigger').addEventListener('click', () => currentAnnotator() && currentAnnotator().resize(1));
 $('#tool-delete').addEventListener('click', () => currentAnnotator() && currentAnnotator().deleteSelected());
+$('#tool-done').addEventListener('click', () => {
+  const annot = currentAnnotator();
+  if (!annot) return;
+  if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') document.activeElement.blur(); // closes the keyboard
+  annot.deselect();
+});
 $('#tool-undo').addEventListener('click', () => currentAnnotator() && currentAnnotator().undo());
 $('#tool-redo').addEventListener('click', () => currentAnnotator() && currentAnnotator().redo());
 // Keep the keyboard open: tapping a tool shouldn't take focus from the answer box.
@@ -578,6 +586,17 @@ if (dictationStatus() !== 'ok') {
   });
   viewerDictation.attachHoldButton(viewerMic);
 }
+
+// ── No browser right-click menu ───────────────────────
+// Press-and-hold on a Windows touch screen (or a right-click) would open the
+// browser's own menu (Save image, Copy…) over pages, stamps and drawings.
+// PagePal has its own menu instead. Text boxes keep theirs, for Paste and
+// spelling suggestions.
+document.addEventListener('contextmenu', e => {
+  const t = e.target;
+  if (t && t.closest && t.closest('textarea, input, [contenteditable="true"]')) return;
+  e.preventDefault();
+});
 
 // ── Long-press menu on the page ───────────────────────
 const pageMenu = $('#page-menu');

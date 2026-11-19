@@ -170,17 +170,17 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M21 21l-5-5"/></svg>
         </button>
       </div>
-      <button id="viewer-add-page" class="tool-btn" type="button" hidden>
+      <button id="viewer-add-page" class="tool-btn" type="button" aria-label="Add page" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span>Add page</span>
       </button>
-      <button id="viewer-send" class="tool-btn primary send-btn" type="button">
+      <button id="viewer-send" class="tool-btn primary send-btn" type="button" aria-label="Send">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
         <span>Send</span>
       </button>
     </div>
     <div class="viewer-tools" role="toolbar" aria-label="Answer tools">
-      <button id="tool-add" class="tool-btn add-btn" type="button" aria-haspopup="menu" title="Add a tick, cross, circle, drawing or answer">
+      <button id="tool-add" class="tool-btn add-btn when-idle-compact" type="button" aria-haspopup="menu" aria-label="Add" title="Add a tick, cross, circle, drawing or answer">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span>Add</span>
       </button>
@@ -189,17 +189,22 @@
         <span>Hold to talk</span>
       </button>
       <div class="tool-group">
-        <button id="tool-hear" class="tool" type="button" title="Hear the answer">
+        <button id="tool-hear" class="tool" type="button" title="Hear the answer" aria-label="Hear">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span>Hear</span>
         </button>
+      </div>
+      <div class="tool-group when-selected">
         <button id="tool-smaller" class="tool" type="button" title="Smaller" aria-label="Smaller"><span class="glyph small-a">A</span></button>
         <button id="tool-bigger" class="tool" type="button" title="Bigger" aria-label="Bigger"><span class="glyph big-a">A</span></button>
         <button id="tool-color" class="tool" type="button" title="Colour" aria-label="Colour: Blue"><span class="swatch"></span></button>
         <button id="tool-delete" class="tool" type="button" title="Delete" aria-label="Delete">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
         </button>
+        <button id="tool-done" class="tool tool-done" type="button" title="Done" aria-label="Done">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg>
+        </button>
       </div>
-      <div class="tool-group">
+      <div class="tool-group when-idle">
         <button id="tool-undo" class="tool" type="button" title="Undo" aria-label="Undo">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
         </button>

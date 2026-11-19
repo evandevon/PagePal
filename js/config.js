@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.5.1'; // Stage 2+ — page menu, drawing, new pages
+export const APP_VERSION = '0.6.0'; // phone and tablet layouts
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

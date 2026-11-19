@@ -137,8 +137,18 @@ export class Annotator {
       layer.addEventListener('pointercancel', () => this._cancelPress(true));
       layer.addEventListener('contextmenu', e => {
         // Right-click (Chromebooks, laptops) opens the same menu as a long press.
+        // On Windows touch screens a press-and-hold also fires this event, after
+        // our own long press has already opened the menu: don't open it twice.
+        if (e.target.closest('textarea')) return; // text boxes keep Paste and spelling
         e.preventDefault();
         if (e.target !== layer || this.tool === 'draw') return;
+        const last = this._lastLongPress;
+        const sameHold = last && e.pointerType !== 'mouse' && Date.now() - last.t < 1500 &&
+          Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30;
+        if (sameHold) return;
+        this._cancelPress();
+        this._lastLongPress = { t: Date.now(), x: e.clientX, y: e.clientY };
+        this._suppressClick = e.pointerType === 'touch' || e.pointerType === 'pen';
         const { fx, fy } = this._pointInPage(e, i);
         this.cb.onLongPress && this.cb.onLongPress({ page: i, fx, fy, clientX: e.clientX, clientY: e.clientY });
       });
@@ -266,6 +276,7 @@ export class Annotator {
     press.timer = setTimeout(() => {
       this._press = null;
       this._suppressClick = true;
+      this._lastLongPress = { t: Date.now(), x: press.x, y: press.y };
       if (navigator.vibrate) navigator.vibrate(20);
       this.cb.onLongPress && this.cb.onLongPress({ page: pageIndex, fx, fy, clientX: press.x, clientY: press.y });
     }, LONG_PRESS_MS);
