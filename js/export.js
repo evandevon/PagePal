@@ -19,11 +19,22 @@ export function canShareFiles() {
   }
 }
 
+const slug = s => String(s || '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
+
+/**
+ * Shared base name for everything saved from one sitting, so the CSV and the
+ * page images sort together: Sam-Lee_Week-5-Fractions_2026-11-19_1154
+ */
+export function reportBaseName(student, worksheet, date = new Date()) {
+  const pad = n => String(n).padStart(2, '0');
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const time = `${pad(date.getHours())}${pad(date.getMinutes())}`;
+  return [slug(student) || 'student', slug(worksheet) || 'worksheet', day, time].join('_');
+}
+
 /** Safe file name from a student and worksheet name. */
-export function reportFileName(student, worksheet, ext) {
-  const date = new Date().toISOString().slice(0, 10);
-  const slug = s => String(s || '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
-  return [slug(student) || 'student', slug(worksheet) || 'worksheet', date].join('_') + '.' + ext;
+export function reportFileName(student, worksheet, ext, date = new Date()) {
+  return reportBaseName(student, worksheet, date) + '.' + ext;
 }
 
 /**
@@ -58,6 +69,14 @@ export function openEmailDraft(opts) {
 
 export function saveFile(content, filename, type = 'text/csv') {
   // The BOM makes Excel open UTF-8 CSVs (names with accents) correctly.
-  const parts = type === 'text/csv' ? ['﻿', content] : [content];
+  const parts = type === 'text/csv' ? [String.fromCharCode(0xFEFF), content] : [content];
   downloadBlob(new Blob(parts, { type }), filename);
+}
+
+/** Save several files one after another (browsers ignore downloads fired all at once). */
+export async function saveFiles(files) {
+  for (let i = 0; i < files.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, 600));
+    downloadBlob(files[i], files[i].name);
+  }
 }

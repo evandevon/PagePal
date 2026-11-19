@@ -36,22 +36,27 @@
     <section aria-labelledby="h-start">
       <h2 id="h-start">Get a worksheet</h2>
       <div class="start-grid">
-        <button class="big-btn" type="button" data-coming="Scanning QR codes">
+        <button id="btn-scan" class="big-btn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 19h2M19 14h2"/></svg>
           <span>Scan QR code</span>
-          <small class="soon">Coming soon</small>
         </button>
-        <button class="big-btn" type="button" data-coming="Opening PDFs">
+        <button id="btn-open" class="big-btn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
-          <span>Open PDF</span>
-          <small class="soon">Coming soon</small>
+          <span>Open a file</span>
+          <small>PDF, Word or picture</small>
         </button>
-        <button class="big-btn" type="button" data-coming="Taking photos of worksheets">
+        <button id="btn-photo" class="big-btn" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg>
           <span>Take a photo</span>
-          <small class="soon">Coming soon</small>
+        </button>
+        <button id="btn-paste" class="big-btn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6v3H9z"/><path d="M15 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M9 13l2 2 4-4"/></svg>
+          <span>Paste image</span>
+          <small>or a link</small>
         </button>
       </div>
+      <input id="file-open" type="file" accept="application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*" hidden>
+      <input id="file-photo" type="file" accept="image/*" capture="environment" hidden>
     </section>
 
     <section aria-labelledby="h-recent">
@@ -93,6 +98,10 @@
       <h2 id="h-send">Send my work to the teacher</h2>
       <dl id="stats" class="stats"></dl>
       <div class="send-tools">
+        <button id="btn-send-teacher" class="tool-btn primary" type="button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
+          <span>Send to teacher</span>
+        </button>
         <button id="btn-share" class="tool-btn primary" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
           <span>Email or share</span>
@@ -115,6 +124,109 @@
       <button id="btn-install" class="tool-btn primary" type="button" hidden>Add to Home Screen</button>
     </section>
   </main>
+
+  <section id="viewer" class="viewer" hidden aria-label="Worksheet">
+    <div class="viewer-bar">
+      <button id="viewer-back" class="icon-btn" type="button" aria-label="Back to home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button id="viewer-title" class="viewer-title" type="button" title="Tap to rename"></button>
+      <div class="viewer-nav">
+        <button id="viewer-prev" class="icon-btn" type="button" aria-label="Previous page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>
+        </button>
+        <span id="viewer-page" class="viewer-page" aria-live="polite"></span>
+        <button id="viewer-next" class="icon-btn" type="button" aria-label="Next page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="viewer-zoom">
+        <button id="viewer-zoom-out" class="icon-btn" type="button" aria-label="Zoom out">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M21 21l-5-5"/></svg>
+        </button>
+        <button id="viewer-zoom-label" class="zoom-label" type="button" aria-label="Fit to width">100%</button>
+        <button id="viewer-zoom-in" class="icon-btn" type="button" aria-label="Zoom in">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M21 21l-5-5"/></svg>
+        </button>
+      </div>
+      <button id="viewer-send" class="tool-btn primary send-btn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+        <span>Send</span>
+      </button>
+    </div>
+    <div id="viewer-scroll" class="viewer-scroll">
+      <div id="viewer-pages" class="viewer-pages"></div>
+    </div>
+  </section>
+
+  <section id="crop" class="fullscreen crop" hidden aria-labelledby="crop-title">
+    <div class="fs-bar">
+      <button id="crop-cancel" class="tool-btn" type="button">Cancel</button>
+      <h2 id="crop-title">Line up the corners with the page</h2>
+      <span></span>
+    </div>
+    <div id="crop-stage" class="crop-stage"><canvas id="crop-canvas"></canvas></div>
+    <div class="fs-tools">
+      <button id="crop-rotate-left" class="tool-btn" type="button" aria-label="Rotate left">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      </button>
+      <button id="crop-rotate-right" class="tool-btn" type="button" aria-label="Rotate right">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+      </button>
+      <button id="crop-full" class="tool-btn" type="button">Whole picture</button>
+      <label class="check crop-check"><input id="crop-enhance" type="checkbox" checked> Clean up</label>
+      <button id="crop-another" class="tool-btn" type="button">Add another page</button>
+      <button id="crop-done" class="tool-btn primary" type="button">Done</button>
+    </div>
+    <div id="crop-busy" class="busy-inline" hidden>Straightening the page…</div>
+  </section>
+
+  <section id="scanner" class="fullscreen scanner" hidden aria-label="Scan a QR code">
+    <video id="scanner-video" muted playsinline></video>
+    <div class="scanner-frame" aria-hidden="true"></div>
+    <div class="scanner-bottom">
+      <p id="scanner-msg" role="status" aria-live="polite"></p>
+      <div class="scanner-tools">
+        <label class="tool-btn">Choose a photo<input id="scanner-photo" type="file" accept="image/*" hidden></label>
+        <button id="scanner-cancel" class="tool-btn" type="button">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="busy" class="busy" hidden role="status" aria-live="polite">
+    <div class="busy-card"><div class="spinner" aria-hidden="true"></div><p id="busy-text">Loading…</p></div>
+  </div>
+
+  <dialog id="next-page" aria-labelledby="next-page-title">
+    <div class="settings-form">
+      <h2 id="next-page-title">Ready for the next page?</h2>
+      <p class="note">Turn the page over or line up the next sheet, then take its photo.</p>
+      <div class="send-tools stack">
+        <button id="next-page-take" class="tool-btn primary" type="button">Take next photo</button>
+        <button id="next-page-finish" class="tool-btn" type="button">That’s all the pages</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="send-dialog" aria-labelledby="h-send-dialog">
+    <form method="dialog" class="settings-form">
+      <div class="dialog-head">
+        <h2 id="h-send-dialog">Send my work</h2>
+        <button class="icon-btn" value="close" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <p id="send-dialog-who" class="note"></p>
+      <dl id="send-dialog-stats" class="stats"></dl>
+      <div class="send-tools stack">
+        <button id="sd-teacher" class="tool-btn primary" type="button" hidden>Send to teacher</button>
+        <button id="sd-share" class="tool-btn primary" type="button">Email or share</button>
+        <button id="sd-email" class="tool-btn" type="button">Email summary</button>
+        <button id="sd-save" class="tool-btn" type="button">Save to Files</button>
+      </div>
+      <p class="note">Saves and shares a report (CSV) and a picture of each page, with matching names.</p>
+    </form>
+  </dialog>
 
   <dialog id="settings" aria-labelledby="h-settings">
     <form method="dialog" class="settings-form">
@@ -141,7 +253,16 @@
       <label for="set-teacher-email">Teacher's email (for “Email summary”)</label>
       <input id="set-teacher-email" type="email" autocomplete="off" placeholder="teacher@school.edu.au">
 
+      <label>My teacher</label>
+      <div class="teacher-row">
+        <span id="set-teacher-status" class="note">Not connected</span>
+        <button id="btn-connect-teacher" class="tool-btn" type="button">Scan class QR code</button>
+        <button id="btn-disconnect-teacher" class="tool-btn quiet" type="button" hidden>Disconnect</button>
+      </div>
+
       <label class="check"><input id="set-suggestions" type="checkbox"> Word suggestions and spell check</label>
+
+      <p class="note"><a href="teacher.html" target="_blank" rel="noopener">For teachers: make QR codes</a></p>
 
       <p class="note version">PagePal <span id="app-version"></span></p>
     </form>

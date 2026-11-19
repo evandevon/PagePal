@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.1.0'; // Stage 0 — foundations
+export const APP_VERSION = '0.2.0'; // Stage 1 — getting worksheets in
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

@@ -3,9 +3,10 @@
 // Strategy: "stale while revalidate" for the app's own files — serve the
 // saved copy instantly, then fetch a fresh copy in the background for next
 // time. So after you push a change to GitHub, students get it on their
-// second open. Bump CACHE_VERSION when the list of files below changes.
+// second open. Bump CACHE_VERSION (and APP_VERSION in js/config.js) with
+// each release so old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.1.0';
+const CACHE_VERSION = 'pagepal-v0.2.0';
 
 const APP_SHELL = [
   './',
@@ -28,6 +29,24 @@ const APP_SHELL = [
   'js/session-log.js',
   'js/export.js',
   'js/store.js',
+  'js/links.js',
+  'js/remote.js',
+  'js/pdf-doc.js',
+  'js/docx-doc.js',
+  'js/image-tools.js',
+  'js/worksheets.js',
+  'js/crop.js',
+  'js/qr-scan.js',
+  'js/viewer.js',
+  'js/send.js',
+  'js/teacher.js',
+  'teacher.html',
+  'teacher.css',
+  'lib/pdfjs/pdf.min.mjs',
+  'lib/pdfjs/pdf.worker.min.mjs',
+  'lib/jsQR.js',
+  'lib/qrcode.mjs',
+  // The Word libraries (lib/docx) and PDF fonts are cached the first time they're used.
 ];
 
 self.addEventListener('install', event => {

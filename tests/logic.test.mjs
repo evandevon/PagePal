@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { splitIntoChunks, wordIndexAt, rankVoice } from '../js/tts.js';
 import { SessionLog, toCSV, toText, IDLE_MS } from '../js/session-log.js';
-import { mailtoLink, reportFileName } from '../js/export.js';
+import { mailtoLink, reportFileName, reportBaseName } from '../js/export.js';
 
 test('splitIntoChunks keeps offsets that point back into the original text', () => {
   const text = 'Read the question. Then write your answer! Is it right?';
@@ -90,6 +90,8 @@ test('mailto links are encoded and shortened', () => {
   assert.ok(decodeURIComponent(link.split('&body=')[1]).length < 1900);
 });
 
-test('report file names are safe', () => {
-  assert.match(reportFileName('Zoë O’Brien', 'Week 5: Fractions!', 'csv'), /^Zoë-O-Brien_Week-5-Fractions_\d{4}-\d{2}-\d{2}\.csv$/);
+test('report file names are safe and pair up by date and time', () => {
+  const when = new Date(2026, 10, 19, 9, 5);
+  assert.equal(reportFileName('Zoë O’Brien', 'Week 5: Fractions!', 'csv', when), 'Zoë-O-Brien_Week-5-Fractions_2026-11-19_0905.csv');
+  assert.equal(reportBaseName('', '', when), 'student_worksheet_2026-11-19_0905');
 });

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PagePal for teachers: QR codes</title>
+  <meta name="theme-color" content="#1D9E75">
+  <link rel="icon" href="icons/favicon-32.png" type="image/png">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="teacher.css">
+  <script type="module" src="js/teacher.js"></script>
+</head>
+<body class="mode-regular teacher-page">
+  <header class="appbar">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" width="36" height="36">
+      <span>PagePal for teachers</span>
+    </div>
+    <a class="appbar-link" href="./">Open PagePal</a>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="h-ws">
+      <h2 id="h-ws">1. Worksheet QR code</h2>
+      <p class="note">Students scan it and the worksheet opens in PagePal. Share the file in Google Drive as <strong>“Anyone with the link can view”</strong> first.</p>
+
+      <label class="field-label" for="ws-link">Google Drive link (or a link to a PDF)</label>
+      <input id="ws-link" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+             placeholder="https://drive.google.com/file/d/…/view">
+      <label class="field-label" for="ws-title">Worksheet name (optional)</label>
+      <input id="ws-title" type="text" autocomplete="off" placeholder="Week 5 Fractions">
+      <div class="send-tools">
+        <button id="ws-make" class="tool-btn primary" type="button">Check link and make QR code</button>
+      </div>
+      <div id="ws-status" class="status" role="status" aria-live="polite" hidden></div>
+
+      <div id="ws-result" class="qr-result print-card" hidden>
+        <div id="ws-qr" class="qr-box"></div>
+        <p id="ws-label" class="qr-label"></p>
+        <p class="qr-sub">Scan with PagePal (Scan QR code) or the Camera app</p>
+        <div class="send-tools no-print">
+          <a id="ws-test" class="tool-btn" target="_blank" rel="noopener">Test it</a>
+          <button id="ws-copy" class="tool-btn" type="button">Copy link</button>
+          <button id="ws-png" class="tool-btn" type="button">Download picture</button>
+          <button id="ws-print" class="tool-btn primary" type="button">Print</button>
+        </div>
+        <p id="ws-link-out" class="link-out no-print"></p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-inbox">
+      <h2 id="h-inbox">2. Class QR code for receiving work</h2>
+      <p class="note">Students scan this once; their iPad then shows <strong>Send to teacher</strong>, and work arrives in your Google Sheet. Set up the sheet first with the
+        <a href="https://claude.ai/artifact/D4guC9H9etjt9FgFegXvW7" target="_blank" rel="noopener">teacher set-up guide</a>
+        (script: <a href="https://github.com/evandevon/PagePal/blob/main/teacher/PagePal-Inbox.gs" target="_blank" rel="noopener">PagePal-Inbox.gs</a>).</p>
+
+      <label class="field-label" for="in-name">Your name and class, as students know it</label>
+      <input id="in-name" type="text" autocomplete="off" placeholder="Mr Evans, 3/4B">
+      <label class="field-label" for="in-url">Web app URL (from Deploy, ends in /exec)</label>
+      <input id="in-url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+             placeholder="https://script.google.com/macros/s/…/exec">
+      <label class="field-label" for="in-secret">Secret code (from the Execution log)</label>
+      <input id="in-secret" type="text" autocomplete="off" spellcheck="false" placeholder="16 letters and numbers">
+      <div class="send-tools">
+        <button id="in-test" class="tool-btn primary" type="button">Test connection and make QR code</button>
+        <button id="in-make" class="tool-btn" type="button">Make QR code without testing</button>
+      </div>
+      <div id="in-status" class="status" role="status" aria-live="polite" hidden></div>
+
+      <div id="in-result" class="qr-result print-card" hidden>
+        <div id="in-qr" class="qr-box"></div>
+        <p id="in-label" class="qr-label"></p>
+        <p class="qr-sub">In PagePal: Settings › Scan class QR code</p>
+        <div class="send-tools no-print">
+          <button id="in-png" class="tool-btn" type="button">Download picture</button>
+          <button id="in-print" class="tool-btn primary" type="button">Print</button>
+        </div>
+        <p class="note no-print">Keep this code within your class: anyone who scans it can send work to your sheet. If it spreads, run <code>resetCode</code> in Apps Script and make a new one.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

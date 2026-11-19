@@ -35,3 +35,37 @@ export function downloadBlob(blob, filename) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Full-screen "please wait" card. Returns a function that hides it. */
+export function showBusy(message) {
+  const el = $('#busy');
+  if (!el) return () => {};
+  $('#busy-text').textContent = message;
+  el.hidden = false;
+  return () => { el.hidden = true; };
+}
+
+export function setBusyText(message) {
+  const t = $('#busy-text');
+  if (t) t.textContent = message;
+}
+
+/**
+ * Open a file picker and resolve with the chosen File (or null if cancelled).
+ * Must be called straight from a tap, or iPad Safari ignores it.
+ */
+export function pickFile(input) {
+  return new Promise(resolve => {
+    const done = file => {
+      input.removeEventListener('change', onChange);
+      input.removeEventListener('cancel', onCancel);
+      input.value = '';
+      resolve(file);
+    };
+    const onChange = () => done(input.files && input.files[0] ? input.files[0] : null);
+    const onCancel = () => done(null);
+    input.addEventListener('change', onChange);
+    input.addEventListener('cancel', onCancel);
+    input.click();
+  });
+}

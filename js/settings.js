@@ -9,6 +9,7 @@ const DEFAULTS = {
   voiceName: '',           // '' = pick the best English voice automatically
   speechRate: 0.88,        // same default as Word Helper
   teacherEmail: '',        // pre-fills "Email summary"
+  teacher: null,           // {name, url, secret} from the class QR code (Send to teacher)
   suggestions: true,       // word suggestions + spell check (from Stage 3)
   showHighlights: true,    // faint tint on detected words (from Stage 5)
 };

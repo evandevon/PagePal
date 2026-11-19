@@ -1,0 +1,38 @@
+/* Teacher page extras (QR makers). Builds on app.css. */
+
+.teacher-page main { gap: 24px; }
+.appbar-link { color: #fff; font-weight: 600; text-decoration: none; padding: 10px 12px; border-radius: 10px; }
+.appbar-link:hover { background: rgba(255, 255, 255, 0.15); }
+.teacher-page .field-label { margin-top: 14px; }
+.teacher-page .send-tools { margin-top: 14px; }
+a.tool-btn { text-decoration: none; color: inherit; }
+
+.status { margin-top: 14px; padding: 12px 14px; border-radius: 12px; line-height: 1.4; }
+.status.ok { background: #E1F5EE; color: #0F6E56; }
+.status.warn { background: #FFF4D6; color: #7A5300; }
+.status.error { background: #FDECEA; color: #A32D1E; }
+.status ol, .status ul { margin: 6px 0 0; padding-left: 22px; }
+
+.qr-result { margin-top: 18px; text-align: center; padding: 20px; border: 2px dashed var(--line); border-radius: var(--radius); }
+.qr-box { width: min(320px, 80vw); margin: 0 auto; }
+.qr-box svg { width: 100%; height: auto; display: block; }
+.qr-label { font-size: 24px; font-weight: 800; margin: 12px 0 4px; }
+.qr-sub { color: var(--muted); margin: 0 0 6px; }
+.qr-result .send-tools { justify-content: center; }
+.link-out { margin-top: 10px; font-size: 13px; color: var(--muted); word-break: break-all; }
+
+@media print {
+  body { background: #fff; }
+  .appbar, .no-print, .toast { display: none !important; }
+  main > section { border: 0; padding: 0; }
+  main > section > :not(.print-card) { display: none !important; }
+  main > section:not(.printing) { display: none !important; }
+  .qr-result { border: 3px solid #000; margin: 10mm auto; max-width: 140mm; }
+  .qr-box { width: 100mm; }
+  .qr-label { font-size: 28pt; }
+  .qr-sub { font-size: 14pt; color: #000; }
+}
+
+/* The app's icon style (outlined strokes) must not apply to QR codes. */
+.qr-box svg { stroke: none; width: 100%; height: auto; }
+.qr-box svg * { stroke: none; }
