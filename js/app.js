@@ -19,7 +19,7 @@ import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
 import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, pageImages, visibleSpot, goToPage } from './viewer.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
-import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS } from './send.js';
+import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
 
 const settings = getSettings();
 
@@ -586,6 +586,47 @@ if (dictationStatus() !== 'ok') {
   });
   viewerDictation.attachHoldButton(viewerMic);
 }
+
+// ── Explanations for the save / send options ──────────
+// Each option gets a one-line hint underneath, and an ⓘ button that opens
+// the full "how it works and what is sent" (hover shows it on computers).
+let helpCount = 0;
+function addSendHelp(btn, key) {
+  const help = SEND_HELP[key];
+  const id = 'send-info-' + (++helpCount);
+  const wrap = document.createElement('div');
+  wrap.className = 'send-option';
+  const row = document.createElement('div');
+  row.className = 'send-row';
+  const info = document.createElement('button');
+  info.type = 'button';
+  info.className = 'info-btn';
+  info.textContent = 'i';
+  info.setAttribute('aria-expanded', 'false');
+  info.setAttribute('aria-controls', id);
+  info.setAttribute('aria-label', 'How does this work, and what is sent?');
+  info.title = help.details.join('\n\n');
+  btn.title = help.hint;
+  const hint = document.createElement('p');
+  hint.className = 'send-hint';
+  hint.textContent = help.hint;
+  const details = document.createElement('div');
+  details.className = 'send-info';
+  details.id = id;
+  details.hidden = true;
+  help.details.forEach(t => { const p = document.createElement('p'); p.textContent = t; details.appendChild(p); });
+  info.addEventListener('click', () => {
+    const open = details.hidden;
+    details.hidden = !open;
+    info.setAttribute('aria-expanded', String(open));
+  });
+  btn.replaceWith(wrap);
+  row.append(btn, info);
+  wrap.append(row, hint, details);
+}
+[['#sd-teacher', 'teacher'], ['#sd-share', 'share'], ['#sd-email', 'email'], ['#sd-save', 'save'],
+ ['#btn-send-teacher', 'teacher'], ['#btn-share', 'share'], ['#btn-email', 'email'], ['#btn-save', 'save']]
+  .forEach(([sel, key]) => addSendHelp($(sel), key));
 
 // ── No browser right-click menu ───────────────────────
 // Press-and-hold on a Windows touch screen (or a right-click) would open the

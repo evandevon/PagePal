@@ -614,6 +614,27 @@ dialog.wide-dialog { width: min(760px, calc(100vw - 24px)); }
 .template-card strong { font-size: 15px; }
 .template-card span { font-size: 13px; color: var(--muted); }
 
+/* ── Send options with explanations ─────────────────── */
+.send-tools.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.send-tools.options.stack { grid-template-columns: 1fr; }
+.send-option { display: flex; flex-direction: column; gap: 4px; }
+.send-option:has(> .send-row > [hidden]) { display: none; }
+.send-row { display: flex; gap: 6px; align-items: stretch; }
+.send-row > .tool-btn { flex: 1; justify-content: flex-start; }
+.info-btn {
+  width: var(--tap); flex-shrink: 0;
+  border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--accent);
+  font: 700 18px/1 Georgia, serif; font-style: italic; cursor: pointer;
+}
+.info-btn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.send-hint { margin: 0; font-size: 13px; color: var(--muted); }
+.send-info {
+  margin: 2px 0 4px; padding: 10px 14px; border-radius: 12px;
+  background: var(--bg); border: 1px solid var(--line); font-size: 14px; line-height: 1.45;
+}
+.send-info p { margin: 0 0 6px; }
+.send-info p:last-child { margin-bottom: 0; }
+
 /* ── Send dialog, teacher row ─────────────────────── */
 .send-tools.stack { flex-direction: column; }
 .send-tools.stack .tool-btn { width: 100%; }
