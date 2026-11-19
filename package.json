@@ -1,0 +1,7 @@
+{
+  "name": "pagepal",
+  "private": true,
+  "type": "module",
+  "description": "Only used to run the unit tests (node --test). The site itself needs no build or install.",
+  "scripts": { "test": "node --test" }
+}

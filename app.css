@@ -1,0 +1,310 @@
+/* PagePal styles.
+   Sections: fonts · tokens · display modes · layout · controls · practice
+   · send · settings · toast. */
+
+/* ── Fonts ─────────────────────────────────────────── */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('fonts/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Tokens ────────────────────────────────────────── */
+:root {
+  --brand: #1D9E75;
+  --brand-ink: #0F6E56;
+  --brand-soft: #E1F5EE;
+  --accent: #185FA5;
+  --danger: #C0392B;
+
+  --bg: #F5F7FA;
+  --card: #FFFFFF;
+  --ink: #1A1A1A;
+  --muted: #5F6B76;
+  --line: #DDE3E8;
+
+  /* Text the student reads or writes (set per display mode) */
+  --read-font: 'OpenDyslexic', Arial, sans-serif;
+  --read-bg: #FEFBD8;
+  --read-ink: #2A2A2A;
+  --read-size: 22px;
+  --read-line: 2;
+  --read-spacing: 0.05em;
+  --word-tint: rgba(29, 158, 117, 0.22);   /* faint "you can tap me" highlight */
+  --word-speaking: #FFE066;
+
+  --radius: 14px;
+  --tap: 48px;   /* minimum touch target */
+  --ui-font: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+/* ── Display modes (from Word Helper) ─────────────── */
+body.mode-dyslexia { --bg: #FBF8E8; }
+
+body.mode-regular {
+  --read-font: Arial, sans-serif;
+  --read-bg: #FFFFFF;
+  --read-ink: #1A1A1A;
+  --read-line: 1.75;
+  --read-spacing: normal;
+  --word-tint: rgba(29, 158, 117, 0.18);
+}
+
+body.mode-highcontrast {
+  --bg: #111111; --card: #1B1B1B; --ink: #FFFFFF; --muted: #C8C8C8; --line: #3A3A3A;
+  --brand-soft: #0E3B2E;
+  --read-font: Arial, sans-serif;
+  --read-bg: #000000;
+  --read-ink: #FFFFFF;
+  --read-line: 1.9;
+  --read-spacing: 0.03em;
+  --word-tint: rgba(255, 255, 255, 0.28);
+  --word-speaking: #FFD60A;
+}
+
+body.mode-darkblue {
+  --bg: #07101E; --card: #0D1F3C; --ink: #FFE066; --muted: #CBB866; --line: #20365C;
+  --brand-soft: #123153;
+  --read-bg: #0A1628;
+  --read-ink: #FFE066;
+  --read-line: 2.1;
+  --word-tint: rgba(255, 224, 102, 0.3);
+  --word-speaking: #3D6FB6;
+}
+
+body.mode-large {
+  --bg: #FBF8E8;
+  --read-size: 34px;
+  --read-line: 2.3;
+  --read-spacing: 0.06em;
+}
+
+/* ── Layout ────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.45 var(--ui-font);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.appbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  background: var(--brand);
+  color: #fff;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; letter-spacing: 0.01em; }
+.brand img { border-radius: 9px; }
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+  display: grid;
+  gap: 22px;
+}
+
+h2 { font-size: 19px; margin: 0 0 10px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+.empty { color: var(--muted); margin: 0; }
+
+/* ── Controls ──────────────────────────────────────── */
+button { font: inherit; color: inherit; }
+svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .rw:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.icon-btn {
+  width: var(--tap); height: var(--tap);
+  display: inline-grid; place-items: center;
+  border: 0; border-radius: 12px; background: transparent; cursor: pointer;
+}
+.appbar .icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+input[type=text], input[type=email], select, textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.name-card { display: flex; align-items: center; gap: 12px; }
+.name-label { font-weight: 700; white-space: nowrap; }
+#student-name { font-size: 20px; }
+
+.start-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.big-btn {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 132px;
+  padding: 16px 8px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-size: 18px; font-weight: 700;
+  cursor: pointer;
+}
+.big-btn svg { width: 44px; height: 44px; color: var(--brand); }
+.big-btn:hover { border-color: var(--brand); }
+.big-btn:active { transform: scale(0.98); }
+.soon {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  background: var(--bg); border-radius: 999px; padding: 2px 10px;
+}
+
+.recent-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.tool-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--tap);
+  padding: 8px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  font-weight: 600;
+  cursor: pointer;
+}
+.tool-btn:hover { border-color: var(--brand); }
+.tool-btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.tool-btn.quiet { color: var(--muted); }
+
+.round-btn {
+  width: 56px; height: 56px; flex-shrink: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--brand); color: #fff;
+  cursor: pointer;
+}
+.round-btn svg { width: 28px; height: 28px; fill: currentColor; stroke: none; }
+
+/* ── Text the student reads and writes ────────────── */
+.reading-surface {
+  font-family: var(--read-font);
+  font-size: var(--read-size);
+  line-height: var(--read-line);
+  letter-spacing: var(--read-spacing);
+  color: var(--read-ink);
+  background: var(--read-bg);
+  border-radius: 12px;
+}
+
+.read-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.read-row p { margin: 0; padding: 6px 12px; flex: 1; }
+
+/* A faint highlighter band under each word: visible enough to show the word
+   can be tapped, quiet enough that the text doesn't look boxed in. */
+.readable .rw {
+  background: linear-gradient(transparent 68%, var(--word-tint) 68%);
+  border-radius: 4px;
+  padding: 0 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.readable .rw.speaking { background: var(--word-speaking); }
+.readable .rw.flash { animation: flash 0.7s ease-out; }
+@keyframes flash { 0%, 40% { background: var(--word-speaking); } 100% { background: transparent; } }
+
+.field-label { display: block; font-weight: 700; margin-bottom: 6px; }
+textarea.answer { resize: vertical; border: 2px solid var(--line); min-height: 120px; }
+textarea.answer:focus { border-color: var(--brand); outline: none; }
+
+/* ── Practice: answer tools ───────────────────────── */
+.answer-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.mic-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 56px; padding: 8px 20px;
+  border: 0; border-radius: 999px;
+  background: var(--brand); color: #fff;
+  font-weight: 700; font-size: 18px;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+.mic-btn.listening { background: #E74C3C; animation: pulse 1.2s ease-in-out infinite; }
+.mic-btn[hidden] { display: none; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.45); } 50% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } }
+
+.mic-preview {
+  flex: 1 1 180px; min-height: 40px;
+  font-family: var(--read-font);
+  display: flex; align-items: center;
+  color: var(--muted); font-style: italic;
+  overflow-x: auto; white-space: nowrap;
+}
+
+/* ── Send to teacher ──────────────────────────────── */
+.stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px;
+  margin: 0 0 14px;
+}
+.stats div { background: var(--bg); border-radius: 10px; padding: 8px 12px; }
+.stats dt { font-size: 13px; color: var(--muted); }
+.stats dd { margin: 0; font-size: 22px; font-weight: 700; }
+.send-tools { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ── Settings dialog ──────────────────────────────── */
+dialog {
+  width: min(520px, calc(100vw - 24px));
+  border: 0; border-radius: 18px; padding: 0;
+  background: var(--card); color: var(--ink);
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+.settings-form { display: grid; gap: 6px; padding: 16px 20px 20px; }
+.settings-form > label { font-weight: 700; margin-top: 10px; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; }
+.dialog-head h2 { margin: 0; }
+.rate-row { display: flex; gap: 12px; align-items: center; }
+.rate-row input { flex: 1; accent-color: var(--brand); min-height: var(--tap); }
+label.check { display: flex; align-items: center; gap: 10px; font-weight: 600; min-height: var(--tap); }
+label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
+.version { text-align: right; }
+
+/* ── Toast ─────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 20px);
+  max-width: calc(100vw - 32px);
+  background: #1A1A1A; color: #fff;
+  padding: 12px 20px; border-radius: 999px;
+  font-size: 15px; text-align: center;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s;
+  z-index: 100;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ── Small screens ─────────────────────────────────── */
+@media (max-width: 560px) {
+  .start-grid { grid-template-columns: 1fr; }
+  .big-btn { flex-direction: row; justify-content: flex-start; min-height: 72px; padding: 12px 16px; }
+  .big-btn svg { width: 32px; height: 32px; }
+  .soon { margin-left: auto; }
+  .name-card { flex-direction: column; align-items: stretch; }
+  .mic-preview { order: 10; flex-basis: 100%; min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
