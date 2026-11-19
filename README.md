@@ -48,6 +48,7 @@ js/
   ui.js                Small shared helpers
 fonts/                 OpenDyslexic (SIL Open Font License)
 icons/                 App icons
+teacher/PagePal-Inbox.gs  Google Apps Script the teacher pastes into a Google Sheet to receive work (Stage 6)
 tests/                 Unit tests for the pure logic (run: node --test)
 ```
 
