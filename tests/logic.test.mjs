@@ -107,3 +107,20 @@ test('CSV never lets an answer become a spreadsheet formula', async () => {
   const log = new SessionLog({ student: '=cmd|"/c calc"!A1', worksheet: 'W' });
   assert.match(toCSV(log, '=1+1'), /Student,"'=cmd\|""\/c calc""!A1"/);
 });
+
+test('PDF maker: one page per picture, and every cross-reference points at its object', async () => {
+  const { jpegsToPdf } = await import('../js/pdf-writer.js');
+  const fakeJpeg = n => new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, ...Array(n).fill(7), 0xFF, 0xD9]);
+  const pdf = jpegsToPdf([{ bytes: fakeJpeg(50), width: 1600, height: 2263 }, { bytes: fakeJpeg(80), width: 1600, height: 1131 }], { title: 'Zoë (Week 5)' });
+  const text = new TextDecoder('latin1').decode(pdf);
+  assert.ok(text.startsWith('%PDF-1.4'));
+  assert.ok(text.trimEnd().endsWith('%%EOF'));
+  assert.match(text, /\/Type \/Pages \/Count 2 \/Kids \[4 0 R 7 0 R\]/);
+  assert.match(text, /\/Title \(Zoe \\\(Week 5\\\)\)/);         // ASCII only, brackets escaped
+  assert.match(text, /\/MediaBox \[0 0 595\.28 841\.\d+\]/);      // A4 portrait page
+  assert.match(text, /\/MediaBox \[0 0 595\.28 420\.\d+\]/);      // a wide picture gets a shorter page
+  const xrefAt = Number(text.match(/startxref\n(\d+)/)[1]);
+  assert.ok(text.slice(xrefAt).startsWith('xref'));
+  const entries = text.slice(xrefAt).split('\n').slice(3).filter(l => / n $/.test(l));
+  entries.forEach((l, i) => assert.ok(text.slice(Number(l.slice(0, 10))).startsWith(`${i + 1} 0 obj`), `object ${i + 1}`));
+});

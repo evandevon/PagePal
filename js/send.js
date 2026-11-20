@@ -8,6 +8,7 @@ import { getSetting } from './settings.js';
 import { toCSV, toText } from './session-log.js';
 import { shareFiles, openEmailDraft, saveFiles, reportBaseName } from './export.js';
 import { blobToCanvas, canvasToBlob } from './image-tools.js';
+import { jpegsToPdf } from './pdf-writer.js';
 
 /**
  * A "work" object describes what is being sent:
@@ -75,34 +76,31 @@ function blobToBase64(blob) {
 }
 
 /**
- * One picture for the teacher's sheet: every page stacked top to bottom,
- * shrunk to stay well under the inbox's 5 MB limit (usually 0.3–1.5 MB).
+ * One PDF for the teacher's sheet: each worksheet page (with the answers
+ * drawn on) as its own PDF page. Shrinks the pictures if a long worksheet
+ * would go over the inbox's 5 MB limit.
  */
-export async function uploadImage(blobs) {
-  const pages = [];
-  for (const b of blobs) pages.push(await blobToCanvas(b, 1600));
-  // iPad Safari can't make canvases much over 16 million pixels.
-  const MAX_PIXELS = 14e6;
-  let width = Math.min(1400, Math.max(...pages.map(p => p.width)));
-  const heightAt = w => pages.reduce((h, p) => h + p.height * (w / p.width), 0) + 16 * (pages.length - 1);
-  while (width * heightAt(width) > MAX_PIXELS && width > 500) width = Math.round(width * 0.85);
-  const out = document.createElement('canvas');
-  out.width = width;
-  out.height = Math.round(heightAt(width));
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = '#D0D5DA'; // grey gaps between pages
-  ctx.fillRect(0, 0, out.width, out.height);
-  let y = 0;
-  for (const p of pages) {
-    const h = Math.round(p.height * (width / p.width));
-    ctx.drawImage(p, 0, y, width, h);
-    y += h + 16;
+export async function workPdf(blobs, title) {
+  const LIMIT = 4.5 * 1024 * 1024;
+  const sources = [];
+  for (const b of blobs) sources.push(await blobToCanvas(b, 1600));
+  for (const [maxWidth, quality] of [[1600, 0.8], [1400, 0.7], [1200, 0.6], [1000, 0.5], [800, 0.45]]) {
+    const pages = [];
+    for (const src of sources) {
+      const scale = Math.min(1, maxWidth / src.width);
+      const c = document.createElement('canvas');
+      c.width = Math.round(src.width * scale);
+      c.height = Math.round(src.height * scale);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(src, 0, 0, c.width, c.height);
+      const jpeg = await canvasToBlob(c, 'image/jpeg', quality);
+      pages.push({ bytes: new Uint8Array(await jpeg.arrayBuffer()), width: c.width, height: c.height });
+    }
+    const pdf = jpegsToPdf(pages, { title });
+    if (pdf.length < LIMIT || maxWidth === 800) return new Blob([pdf], { type: 'application/pdf' });
   }
-  for (const q of [0.8, 0.65, 0.5]) {
-    const blob = await canvasToBlob(out, 'image/jpeg', q);
-    if (blob.size < 4.5 * 1024 * 1024) return blob;
-  }
-  return canvasToBlob(out, 'image/jpeg', 0.4);
 }
 
 /**
@@ -164,7 +162,8 @@ export async function sendToTeacher(work) {
   const teacher = getSetting('teacher');
   if (!teacher) { toast('Connect to your teacher first: Settings › Connect to my teacher.'); return false; }
   const images = work.pageImages ? await work.pageImages() : [];
-  const image = images.length ? { type: 'image/jpeg', base64: await blobToBase64(await uploadImage(images)) } : undefined;
+  const title = `${work.session.student} – ${work.session.worksheet}`;
+  const pdf = images.length ? { type: 'application/pdf', base64: await blobToBase64(await workPdf(images, title)) } : undefined;
   const result = await postToInbox(teacher, {
     student: work.session.student,
     worksheet: work.session.worksheet,
@@ -172,11 +171,11 @@ export async function sendToTeacher(work) {
     sentAt: new Date().toISOString(),
     stats: work.session.stats(work.answer),
     answer: work.answer,
-    image,
+    pdf,
   });
   if (result.ok) {
     toast(result.warnings && result.warnings.length
-      ? `Sent to ${teacher.name}, but the picture of your work wasn’t accepted.`
+      ? `Sent to ${teacher.name}, but the PDF of your work wasn’t accepted.`
       : `Sent to ${teacher.name} ✓`, 4000);
     return true;
   }
@@ -191,8 +190,8 @@ export const SEND_HELP = {
     hint: 'Straight into your teacher’s Google Sheet.',
     details: [
       'Goes to the Google Sheet your teacher set up (from the class QR code you scanned). Nothing else is opened.',
-      'Sends: your name, the worksheet name, time spent working, how many words you typed, said or picked from suggestions, the words you tapped to hear, your answers as text, and one picture with all your pages.',
-      'Your teacher sees a new row in their sheet, with a link to the picture.',
+      'Sends: your name, the worksheet name, time spent working, how many words you typed, said or picked from suggestions, the words you tapped to hear, your answers as text, and a PDF of the worksheet with your answers on every page.',
+      'Your teacher sees a new row in their sheet, with a link to the PDF.',
     ],
   },
   share: {

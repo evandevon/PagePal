@@ -87,6 +87,7 @@ js/
   links.js             Understanding QR / pasted / address links; teacher codes
   remote.js            Downloading from Google Drive (API key) or the web
   send.js              Share, save, email and Send to teacher, with paired file names
+  pdf-writer.js        Tiny PDF maker (one JPEG per page) for Send to teacher
   teacher.js           Teacher page logic
   ui.js                Small shared helpers
 lib/                   Third-party libraries, kept locally for offline use (see lib/README.md)
