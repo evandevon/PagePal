@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupWords, splitRun, wordAt, speakable, keepWord, splitNumber, fixCapitalI, overlaps } from '../js/page-text.js';
+import { groupWords, splitRun, speakable, keepWord, splitNumber, fixCapitalI, swipeArea } from '../js/page-text.js';
 
 const W = (t, x, y, w = 0.06, h = 0.02) => ({ t, x, y, w, h, space: true });
 
@@ -33,13 +33,6 @@ test('splitRun shares a run between its words', () => {
   assert.deepEqual(ws.map(w => w.t), ['one', 'half']);
   assert.ok(Math.abs(ws[0].w - 0.3) < 1e-9 && Math.abs(ws[1].x - 0.4) < 1e-9);
   assert.equal(ws[0].space, true);
-});
-
-test('wordAt finds the tapped word with a little slack, and misses blank space', () => {
-  const blocks = groupWords([W('What', 0.1, 0.1), W('is', 0.18, 0.1), W('Name', 0.1, 0.5)]);
-  assert.deepEqual(wordAt(blocks, 0.19, 0.11), { block: 0, index: 1 });
-  assert.deepEqual(wordAt(blocks, 0.13, 0.0985), { block: 0, index: 0 }); // just above the box
-  assert.equal(wordAt(blocks, 0.5, 0.3), null);
 });
 
 test('speakable trims bullets and underscores', () => {
@@ -75,14 +68,6 @@ test('a number stuck to a word is split', () => {
   assert.deepEqual(splitNumber('school', 0, 60), [{ t: 'school', x0: 0, x1: 60 }]);
 });
 
-test('words on a tilted photo are hit inside their slanted box', () => {
-  const r = -0.14; // about 8 degrees
-  const blocks = [[{ t: 'Spelling', x: 0.3, y: 0.15, w: 0.1, h: 0.03, r }]];
-  // centre (0.35, 0.165): a point along the slant, towards the right end, rising
-  const ax = 0.04, ay = Math.tan(r) * ax / 1.414;
-  assert.ok(wordAt(blocks, 0.35 + ax, 0.165 + ay));
-});
-
 test('a capital I read as | or l before a word becomes I', () => {
   assert.deepEqual(fixCapitalI(['|', 'see', 'the']), ['I', 'see', 'the']);
   assert.deepEqual(fixCapitalI(['Can', 'l', 'go']), ['Can', 'I', 'go']);
@@ -91,9 +76,15 @@ test('a capital I read as | or l before a word becomes I', () => {
   assert.deepEqual(fixCapitalI(['a', '|', 'B']), ['a', '|', 'B']);
 });
 
-test('stacked single words stay separate; overlapping boxes are spotted', () => {
+test('stacked single words stay separate', () => {
   const blocks = groupWords([W('deer', 0.8, 0.232, 0.12, 0.043), W('door', 0.8, 0.283, 0.12, 0.044)]);
   assert.equal(blocks.length, 2);
-  assert.equal(overlaps(W('cat', 0.1, 0.1), W('cat', 0.11, 0.1)), true);
-  assert.equal(overlaps(W('cat', 0.1, 0.1), W('dog', 0.3, 0.1)), false);
+});
+
+test('a swipe covers its own box, widened by half the highlighter', () => {
+  const a = swipeArea([[0.2, 0.3], [0.5, 0.31], [0.6, 0.3]], 0.04, 1.414);
+  assert.ok(Math.abs(a.x0 - 0.18) < 1e-9 && Math.abs(a.x1 - 0.62) < 1e-9);
+  assert.ok(Math.abs(a.y0 - (0.3 - 0.02 / 1.414)) < 1e-9 && Math.abs(a.y1 - (0.31 + 0.02 / 1.414)) < 1e-9);
+  const edge = swipeArea([[0.001, 0.999]], 0.04, 1.414);
+  assert.equal(edge.x0, 0); assert.equal(edge.y1, 1);
 });

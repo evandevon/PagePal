@@ -16,6 +16,7 @@ const DEFAULT_SIZE = 0.024;      // about 14 pt on an A4 page
 const DEFAULT_WIDTH = 0.42;
 const STAMP_SIZE = 0.05;
 const INK_SIZE = 0.004;          // pen line width, fraction of page width
+export const HEAR_SIZE = 0.035;  // highlighter (Hear) width: about one line of print
 const LONG_PRESS_MS = 500;
 const MIN_SIZE = 0.012, MAX_SIZE = 0.08;
 const HISTORY_LIMIT = 100;
@@ -117,6 +118,7 @@ export function drawItems(ctx, items, pageIndex, width, height, fontFamily) {
  *            onTypedWord(word)          → session log
  *            onTap({page, fx, fy})      → true if the tap was handled (a printed word)
  *            onBlankTap(spot)           → a short tap on empty paper (show a hint)
+ *            onHighlight({page, points, size}) → a Hear swipe (fractions of the page)
  */
 export class Annotator {
   constructor(pageEls, items, callbacks = {}) {
@@ -143,7 +145,7 @@ export class Annotator {
         // our own long press has already opened the menu: don't open it twice.
         if (e.target.closest('textarea')) return; // text boxes keep Paste and spelling
         e.preventDefault();
-        if (e.target !== layer || this.tool === 'draw') return;
+        if (e.target !== layer || this.tool === 'draw' || this.tool === 'hear') return;
         const last = this._lastLongPress;
         const sameHold = last && e.pointerType !== 'mouse' && Date.now() - last.t < 1500 &&
           Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30;
@@ -205,8 +207,8 @@ export class Annotator {
 
   setTool(tool) {
     this.tool = tool;
-    this.layers.forEach(l => l.classList.toggle('drawing', tool === 'draw'));
-    if (tool === 'draw') this.deselect();
+    this.layers.forEach(l => l.classList.toggle('drawing', tool === 'draw' || tool === 'hear'));
+    if (tool === 'draw' || tool === 'hear') this.deselect();
   }
 
   setColor(color) {
@@ -250,7 +252,7 @@ export class Annotator {
   _onLayerClick(e, pageIndex) {
     if (e.target !== this.layers[pageIndex]) return; // a tap on an existing item
     if (this._suppressClick) { this._suppressClick = false; return; } // it was a long press
-    if (this.tool === 'draw') return;
+    if (this.tool === 'draw' || this.tool === 'hear') return;
     const { fx, fy } = this._pointInPage(e, pageIndex);
     // A short tap never adds anything (so a missed word, or a stray tap,
     // doesn't start typing): it reads a printed word, or just puts away
@@ -276,7 +278,7 @@ export class Annotator {
 
   _onLayerDown(e, pageIndex) {
     if (e.target !== this.layers[pageIndex]) return;
-    if (this.tool === 'draw') { this._startStroke(e, pageIndex); return; }
+    if (this.tool === 'draw' || this.tool === 'hear') { this._startStroke(e, pageIndex); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     this._cancelPress();
     const { fx, fy } = this._pointInPage(e, pageIndex);
@@ -311,10 +313,12 @@ export class Annotator {
     e.preventDefault();
     this.layers[pageIndex].setPointerCapture(e.pointerId);
     const { fx, fy } = this._pointInPage(e, pageIndex);
-    const it = { id: newId(), page: pageIndex, type: 'ink', points: [[fx, fy]], size: INK_SIZE, color: this.color };
+    const hear = this.tool === 'hear';
+    const it = { id: newId(), page: pageIndex, type: 'ink', points: [[fx, fy]], size: hear ? HEAR_SIZE : INK_SIZE, color: hear ? 'rgb(124, 77, 255)' : this.color };
     const svg = this._inkSvg(it);
+    if (hear) svg.classList.add('annot-hear');
     this.layers[pageIndex].appendChild(svg);
-    this._stroke = { it, path: svg.querySelector('path'), pointerId: e.pointerId };
+    this._stroke = { it, path: svg.querySelector('path'), pointerId: e.pointerId, hear };
   }
 
   _extendStroke(e) {
@@ -330,6 +334,13 @@ export class Annotator {
   _endStroke() {
     const st = this._stroke;
     this._stroke = null;
+    if (st.hear) {
+      // A highlighter swipe isn't kept: it marks words to read aloud.
+      const svg = st.path.closest('svg');
+      setTimeout(() => svg.remove(), 250);
+      if (this.cb.onHighlight) this.cb.onHighlight({ page: st.it.page, points: st.it.points, size: HEAR_SIZE });
+      return;
+    }
     st.path.closest('svg').remove();
     this._remember();
     this.items.push(st.it);

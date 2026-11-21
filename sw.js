@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION (and APP_VERSION in js/config.js) with each release so
 // old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.9.2';
+const CACHE_VERSION = 'pagepal-v0.9.3';
 
 const APP_SHELL = [
   './',
@@ -85,7 +85,10 @@ self.addEventListener('fetch', event => {
 });
 
 async function fromNetwork(req, cache) {
-  const res = await fetch(req);
+  // GitHub Pages lets browsers reuse a file for 10 minutes; ask the server
+  // every time instead (a quick "not changed" when nothing's new), so an
+  // update arrives straight away and old and new files never mix.
+  const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
   if (res.ok && res.type === 'basic') cache.put(req, res.clone());
   return res;
 }

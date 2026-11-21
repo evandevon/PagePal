@@ -16,7 +16,7 @@ import { cropImage } from './crop.js';
 import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
-import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, textWordAt, highlightWord, setTextShown } from './viewer.js';
+import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, wordsInSwipe, highlightHeard, clearHeard } from './viewer.js';
 import { speakable, warmUpOcr } from './page-text.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
@@ -73,10 +73,11 @@ async function openRecord(record, { push = true } = {}) {
     if (!record.student && student) record.student = student;
     wsSession = SessionLog.fromState(record.session, { student, worksheet: record.title });
     await openWorksheet(record);
+    showVersion();
     wsSession.logEvent('open');
     resetTools();
     if (record.lastPage > 1) goToPage(record.lastPage, { smooth: false });
-    if (!(record.annotations || []).length) toast('Press and hold where your answer goes to type, talk, tick or draw. Tap a word to hear it.', 6000);
+    if (!(record.annotations || []).length) toast('Press and hold where your answer goes to type, talk, tick or draw. To hear words, tap Hear and swipe over them.', 7000);
     else if (record.lastPage > 1) toast(`Back on page ${record.lastPage}, where you stopped.`);
     if (push) history.pushState({ ws: record.id }, '', '#ws=' + record.id);
   } catch (err) {
@@ -87,6 +88,11 @@ async function openRecord(record, { push = true } = {}) {
   }
 }
 
+/** Small print above the worksheet, so testers can see which version they have. */
+function showVersion() {
+  $('#viewer-version').textContent = `PagePal v${APP_VERSION}`;
+}
+
 function backToHome() {
   if (history.state && history.state.ws) history.back();
   else showHome();
@@ -95,6 +101,7 @@ function backToHome() {
 function showHome() {
   hidePageMenu();
   $('#draw-bar').hidden = true;
+  $('#hear-bar').hidden = true;
   flushSave();
   if (viewerDictation) viewerDictation.abort();
   tts.stop();
@@ -437,15 +444,8 @@ initViewer({
       lastBlankHint = Date.now();
       toast('Press and hold to write here.', 2500);
     },
-    onTap: ({ page, fx, fy }) => {
-      if (!getSetting('showHighlights')) return false;
-      const hit = textWordAt(page, fx, fy);
-      if (!hit) return false;
-      readFrom(hit);
-      return true;
-    },
+    onHighlight: ({ page, points, size }) => hearSwipe(page, points, size),
   },
-  text: { onStatus: showTextStatus },
   onSend: () => {
     if (!wsSession) return;
     flushSave();
@@ -496,52 +496,50 @@ function markSent(how) {
 
 let lastBlankHint = 0;
 
-// ── Tap a printed word: read from there to the end of its block ──
-function readFrom(hit) {
+// ── Hear: swipe over words to have them read aloud ─────
+let hearRun = 0;
+async function hearSwipe(page, points, size) {
+  const run = ++hearRun;
+  tts.stop();
   if (viewerDictation) viewerDictation.abort();
-  const words = hit.words.slice(hit.index);
-  const tapped = speakable(words[0].t).replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-  if (wsSession && tapped) wsSession.logListen(tapped, 'word');
-  highlightWord(hit.page, hit.block, hit.index);
-  tts.readWords(words.map(w => speakable(w.t)), {
-    onWord: k => highlightWord(hit.page, hit.block, hit.index + k),
-  });
+  const status = setTimeout(() => showReading(true), 250); // only if it takes a moment
+  let words = [];
+  try {
+    words = await wordsInSwipe(page, points, size);
+  } catch (err) {
+    console.warn('Could not read that area', err);
+    toast(navigator.onLine === false
+      ? 'Reading words needs PagePal to have been online once. Try again with wifi.'
+      : 'Couldn’t read the words there. Try again.', 5000);
+    clearHeard();
+    return;
+  } finally {
+    clearTimeout(status);
+    showReading(false);
+  }
+  if (run !== hearRun) return; // another swipe since
+  if (!words.length) {
+    toast('No words found there. Swipe right along the words.', 3500);
+    setTimeout(() => { if (run === hearRun) clearHeard(); }, 1200);
+    return;
+  }
+  const said = words.map(w => speakable(w.t));
+  if (wsSession) wsSession.logListen(said.join(' ').replace(/[^\p{L}\p{N}' -]/gu, '').trim(), words.length === 1 ? 'word' : 'block');
+  highlightHeard(0);
+  tts.readWords(said, { onWord: k => { if (run === hearRun) highlightHeard(k); } });
 }
 
 tts.onSpeakingChange(on => {
   if (on) hideToast(); // so the Stop button isn't hidden behind a message
   $('#speak-stop').hidden = !on;
-  if (!on) highlightWord(null);
+  if (!on) clearHeard();
 });
 $('#speak-stop').addEventListener('click', () => tts.stop());
 
-let statusTimer = null;
-function showTextStatus(s) {
-  const box = $('#text-status'), msg = $('#text-status-msg');
-  clearTimeout(statusTimer);
-  box.classList.toggle('busy', s.state === 'working');
-  if (s.state === 'working') {
-    msg.textContent = s.total > 1
-      ? `Finding words to read aloud… page ${s.page} of ${s.total}`
-      : 'Finding words to read aloud…';
-    box.hidden = false;
-  } else if (s.state === 'done') {
-    if (s.fresh && s.found && getSetting('showHighlights')) {
-      msg.textContent = 'Tap a purple word to hear it.';
-      box.hidden = false;
-      statusTimer = setTimeout(() => { box.hidden = true; }, 4000);
-    } else if (s.fresh && !s.found) {
-      msg.textContent = 'No words found to read on this worksheet.';
-      box.hidden = false;
-      statusTimer = setTimeout(() => { box.hidden = true; }, 4000);
-    } else box.hidden = true;
-  } else {
-    msg.textContent = navigator.onLine === false
-      ? 'Words can be read aloud once PagePal has been online once.'
-      : 'Couldn’t find the words on this worksheet.';
-    box.hidden = false;
-    statusTimer = setTimeout(() => { box.hidden = true; }, 5000);
-  }
+function showReading(on) {
+  $('#text-status-msg').textContent = 'Reading the words…';
+  $('#text-status').classList.toggle('busy', on);
+  $('#text-status').hidden = !on;
 }
 
 async function runSend(fn, work, button, how) {
@@ -580,12 +578,22 @@ $('#sd-connect').addEventListener('click', async () => {
 let colorIndex = 0;
 
 /** 'text' (tapping the page types) or 'draw' (finger draws until Done). */
+/** 'text' (press and hold adds things), 'draw' (finger draws) or 'hear' (finger highlights words to hear). */
 function setTool(tool) {
   const annot = currentAnnotator();
   if (annot) annot.setTool(tool);
   $('#draw-bar').hidden = tool !== 'draw';
+  $('#hear-bar').hidden = tool !== 'hear';
   $('#tool-add').classList.toggle('active', tool === 'draw');
+  $('#tool-hear').classList.toggle('active', tool === 'hear');
+  if (tool !== 'hear') clearHeard();
 }
+
+function startHearing() {
+  setTool('hear');
+  toast('Swipe your finger along the words you want to hear.', 3500);
+}
+$('#hear-done').addEventListener('click', () => { tts.stop(); setTool('text'); });
 
 function startDrawing() {
   setTool('draw');
@@ -596,13 +604,13 @@ $('#draw-done').addEventListener('click', () => setTool('text'));
 $('#draw-undo').addEventListener('click', () => currentAnnotator() && currentAnnotator().undo());
 $('#draw-color').addEventListener('click', () => $('#tool-color').click());
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !$('#draw-bar').hidden) setTool('text');
+  if (e.key === 'Escape' && (!$('#draw-bar').hidden || !$('#hear-bar').hidden)) setTool('text');
 });
 
 // "Add" opens the long-press menu, for keyboards, switch access and anyone
 // who hasn't discovered long press. Items go near the top of what's on screen.
 $('#tool-add').addEventListener('click', () => {
-  if (!$('#draw-bar').hidden) { setTool('text'); return; }
+  if (!$('#draw-bar').hidden || !$('#hear-bar').hidden) { setTool('text'); return; }
   const spot = visibleSpot();
   if (!spot) return;
   const r = $('#tool-add').getBoundingClientRect();
@@ -631,7 +639,7 @@ function updateTools() {
   $('#tool-smaller').disabled = $('#tool-bigger').disabled = $('#tool-delete').disabled = !sel;
   $('#tool-undo').disabled = !(annot && annot.canUndo());
   $('#tool-redo').disabled = !(annot && annot.canRedo());
-  $('#tool-hear').disabled = !annot || !(sel && sel.type === 'text' ? (sel.text || '').trim() : worksheetAnswer());
+  $('#tool-hear').disabled = !annot;
   if (sel) {
     const i = COLORS.indexOf(sel.color);
     if (i >= 0) { colorIndex = i; showColor(); }
@@ -659,15 +667,21 @@ document.querySelectorAll('.viewer-tools button').forEach(b => {
   if (b.id !== 'tool-mic') b.addEventListener('pointerdown', e => e.preventDefault());
 });
 
+// Hear: with an answer box selected, read that answer; otherwise switch to
+// the highlighter, to swipe over words on the worksheet.
 $('#tool-hear').addEventListener('click', () => {
   const annot = currentAnnotator();
   if (!annot || !wsSession) return;
+  if (!$('#hear-bar').hidden) { tts.stop(); setTool('text'); return; }
   const sel = annot.selected;
-  const text = sel && sel.type === 'text' && (sel.text || '').trim() ? sel.text.trim() : worksheetAnswer();
-  if (!text) { toast('Write or say an answer first.'); return; }
-  wsSession.logListen(text, 'answer');
-  tts.speak(text);
-  scheduleSave();
+  const text = sel && sel.type === 'text' ? (sel.text || '').trim() : '';
+  if (text) {
+    wsSession.logListen(text, 'answer');
+    tts.speak(text);
+    scheduleSave();
+    return;
+  }
+  startHearing();
 });
 
 // Hold to talk: words go into the selected answer box (or a new one).
@@ -792,6 +806,8 @@ pageMenu.addEventListener('click', e => {
   hidePageMenu();
   if (what === 'draw') {
     startDrawing();
+  } else if (what === 'hear') {
+    startHearing();
   } else if (what === 'talk') {
     setTool('text');
     annot.placeAt('text', page, fx, fy, { focus: false });
@@ -941,15 +957,6 @@ $('#btn-test-voice').addEventListener('click', () => tts.speak('This is how fast
 const emailInput = $('#set-teacher-email');
 emailInput.value = settings.teacherEmail || '';
 emailInput.addEventListener('change', () => setSetting('teacherEmail', emailInput.value.trim()));
-
-const highlightBox = $('#set-highlights');
-highlightBox.checked = settings.showHighlights;
-setTextShown(settings.showHighlights);
-highlightBox.addEventListener('change', () => {
-  setSetting('showHighlights', highlightBox.checked);
-  setTextShown(highlightBox.checked);
-  if (!highlightBox.checked) tts.stop();
-});
 
 const suggestBox = $('#set-suggestions');
 suggestBox.checked = settings.suggestions;

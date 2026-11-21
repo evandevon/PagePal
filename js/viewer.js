@@ -7,14 +7,13 @@ import { openPdf, pageSizes, renderPage } from './pdf-doc.js';
 import * as worksheets from './worksheets.js';
 import { canvasToBlob, blobToCanvas } from './image-tools.js';
 import { Annotator, drawItems } from './annotate.js';
-import { pageText, wordAt } from './page-text.js';
+import { readArea, swipeArea } from './page-text.js';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
 
 let current = null; // { record, doc, sizes, urls, zoom, annot, pages: [{el, canvas, renderedWidth, task}] }
 let annotCallbacks = {};
-let textCallbacks = {};
 
 export function currentWorksheet() {
   return current && current.record;
@@ -169,92 +168,64 @@ export async function openWorksheet(record) {
   updatePageLabel();
   await renderVisible();
   worksheets.touch(record).catch(() => {});
-  findText(current);
 }
 
-// ── Words on the page, for tap-to-hear ────────────────
+// ── Hear: words a student highlighted ────────────────
 
 /**
- * Find the words on every page in the background (the page on screen
- * first), drawing a faint highlight on each as it's found.
+ * Read the words under a Hear swipe on page `pageIndex`. Shows the area
+ * while it's being read, then the words found. Returns the words.
  */
-async function findText(view, first = null) {
-  const n = view.pages.length;
-  view.text = view.text || new Array(n).fill(null);
-  if (view.record.template) return;
-  // Wait a moment so the opening page settles (and the student can scroll back).
-  await new Promise(r => setTimeout(r, 300));
-  if (view !== current) return;
-  const start = first !== null ? first : (view.record.lastPage || 1) - 1;
-  const order = [...Array(n).keys()].sort((a, b) => (a < start) - (b < start) || a - b);
-  let worked = false, found = 0;
-  for (const i of order) {
-    if (view !== current) return;
-    if (view.text[i]) continue;
-    const saved = view.record.pageText && view.record.pageText[i];
-    const needsWork = !(saved && saved.v);
-    if (needsWork) textCallbacks.onStatus && textCallbacks.onStatus({ state: 'working', page: i + 1, total: n, ocr: view.record.kind !== 'pdf' });
-    try {
-      const res = await pageText(view.record, i, view.doc);
-      if (view !== current) return;
-      view.text[i] = res.blocks;
-      found += res.blocks.length;
-      drawTextLayer(view, i);
-      if (needsWork) { worked = true; worksheets.update(view.record).catch(() => {}); }
-    } catch (err) {
-      console.warn('Could not find words on page', i + 1, err);
-      if (view !== current) return;
-      textCallbacks.onStatus && textCallbacks.onStatus({ state: 'error' });
-      return;
-    }
-  }
-  if (view === current) textCallbacks.onStatus && textCallbacks.onStatus({ state: 'done', found, fresh: worked });
+export async function wordsInSwipe(pageIndex, points, size) {
+  if (!current) return [];
+  const view = current;
+  const s = view.sizes[pageIndex];
+  const area = swipeArea(points, size, s.height / s.width);
+  showHeard(pageIndex, [], area);
+  const words = await readArea(view.record, pageIndex, area, view.doc);
+  if (view !== current) return [];
+  showHeard(pageIndex, words, words.length ? null : area);
+  return words;
 }
 
-function drawTextLayer(view, i) {
-  const page = view.pages[i];
-  if (page.textLayer) page.textLayer.remove();
+let heard = null; // { layer, els }
+
+/** Draw the area being read (while waiting) or the words found. */
+function showHeard(pageIndex, words, area) {
+  clearHeard();
+  const page = current && current.pages[pageIndex];
+  if (!page) return;
   const layer = document.createElement('div');
-  layer.className = 'text-layer';
+  layer.className = 'hear-layer';
   layer.setAttribute('aria-hidden', 'true');
-  page.textEls = view.text[i].map((words, b) => words.map((w, k) => {
-    const el = document.createElement('span');
-    el.className = 'tw';
-    el.style.left = (w.x * 100) + '%';
-    el.style.top = (w.y * 100) + '%';
-    el.style.width = (w.w * 100) + '%';
-    el.style.height = (w.h * 100) + '%';
-    if (w.r) el.style.transform = `rotate(${w.r}rad)`; // words on a crooked photo
-    el.dataset.b = b; el.dataset.k = k;
+  const box = (el, b) => {
+    el.style.left = (b.x * 100) + '%';
+    el.style.top = (b.y * 100) + '%';
+    el.style.width = (b.w * 100) + '%';
+    el.style.height = (b.h * 100) + '%';
     layer.appendChild(el);
     return el;
-  }));
-  page.textLayer = layer;
-  page.el.appendChild(layer); // under the answers (z-index), over the page picture
+  };
+  if (area) {
+    const el = document.createElement('div');
+    el.className = 'hear-area';
+    box(el, { x: area.x0, y: area.y0, w: area.x1 - area.x0, h: area.y1 - area.y0 });
+  }
+  const els = words.map((w, k) => { const el = document.createElement('span'); el.className = 'tw'; el.dataset.b = 0; el.dataset.k = k; return box(el, w); });
+  page.el.appendChild(layer);
+  heard = { layer, els };
 }
 
-/** The printed word at a point on a page, with its block, or null. */
-export function textWordAt(pageIndex, fx, fy) {
-  if (!current || !current.text || !current.text[pageIndex]) return null;
-  const size = current.sizes[pageIndex];
-  const hit = wordAt(current.text[pageIndex], fx, fy, size.height / size.width);
-  return hit ? { page: pageIndex, ...hit, words: current.text[pageIndex][hit.block] } : null;
+/** Light up word i of the ones being read (or none). */
+export function highlightHeard(i) {
+  if (!heard) return;
+  heard.els.forEach((el, k) => el.classList.toggle('speaking', k === i));
 }
 
-let lit = null;
-/** Light up the word being read (or nothing). */
-export function highlightWord(pageIndex, block, index) {
-  if (lit) lit.classList.remove('speaking');
-  lit = null;
-  if (!current || pageIndex === null || pageIndex === undefined) return;
-  const els = current.pages[pageIndex] && current.pages[pageIndex].textEls;
-  const el = els && els[block] && els[block][index];
-  if (el) { el.classList.add('speaking'); lit = el; }
-}
-
-/** Show or hide the purple tint on words. */
-export function setTextShown(on) {
-  $('#viewer-pages').classList.toggle('hide-text', !on);
+/** Take the highlight off the page. */
+export function clearHeard() {
+  if (heard) heard.layer.remove();
+  heard = null;
 }
 
 export function closeWorksheet() {
@@ -264,7 +235,7 @@ export function closeWorksheet() {
   current.urls.forEach(u => URL.revokeObjectURL(u));
   if (current.doc) current.doc.destroy();
   current = null;
-  lit = null;
+  clearHeard();
   $('#viewer-pages').textContent = '';
   $('#viewer').hidden = true;
   $('#home').hidden = false;
@@ -322,8 +293,7 @@ export async function pageImages() {
 
 // ── One-time wiring ───────────────────────────────────
 
-export function initViewer({ onBack, onSend, annotations = {}, text = {} }) {
-  textCallbacks = text;
+export function initViewer({ onBack, onSend, annotations = {} }) {
   const scroller = $('#viewer-scroll');
   annotCallbacks = annotations;
 

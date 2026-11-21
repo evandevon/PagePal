@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.2'; // pictures masked before text recognition
+export const APP_VERSION = '0.9.3'; // version shown on the worksheet; updates arrive at once
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

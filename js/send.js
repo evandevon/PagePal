@@ -191,7 +191,7 @@ export const SEND_HELP = {
     hint: 'Straight into your teacher’s Google Sheet.',
     details: [
       'Goes to the Google Sheet your teacher set up (from the class QR code you scanned). Nothing else is opened.',
-      'Sends: your name, the worksheet name, time spent working, how many words you typed, said or picked from suggestions, the words you tapped to hear, your answers as text, and a PDF of the worksheet with your answers on every page.',
+      'Sends: your name, the worksheet name, time spent working, how many words you typed, said or picked from suggestions, the words you listened to, your answers as text, and a PDF of the worksheet with your answers on every page.',
       'Your teacher sees a new row in their sheet, with a link to the PDF.',
     ],
   },

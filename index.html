@@ -188,7 +188,7 @@
         <span>Hold to talk</span>
       </button>
       <div class="tool-group">
-        <button id="tool-hear" class="tool" type="button" title="Hear the answer" aria-label="Hear">
+        <button id="tool-hear" class="tool" type="button" title="Hear: swipe over words on the worksheet, or select an answer to hear it" aria-label="Hear">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span>Hear</span>
         </button>
       </div>
@@ -215,6 +215,7 @@
     </div>
     <div id="viewer-scroll" class="viewer-scroll">
       <div id="text-status" class="text-status" role="status" hidden><span class="spinner" aria-hidden="true"></span><span id="text-status-msg"></span></div>
+      <p id="viewer-version" class="viewer-version"></p>
       <div id="viewer-pages" class="viewer-pages"></div>
     </div>
   </section>
@@ -225,7 +226,15 @@
     <button type="button" role="menuitem" data-add="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg>Tick</button>
     <button type="button" role="menuitem" data-add="cross"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>Cross</button>
     <button type="button" role="menuitem" data-add="circle"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="8"/></svg>Circle</button>
+    <button type="button" role="menuitem" data-add="hear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>Hear</button>
     <button type="button" role="menuitem" data-add="draw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21c3-1 4-3 5-5l9-9a2.1 2.1 0 0 0-3-3l-9 9c-2 1-4 2-5 5"/><path d="M14 4l3 3"/></svg>Draw</button>
+  </div>
+
+  <div id="hear-bar" class="draw-bar hear-bar" role="toolbar" aria-label="Hear words" hidden>
+    <span class="draw-bar-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span class="long">Swipe over words to hear them</span><span class="short">Swipe to hear</span></span>
+    <button id="hear-done" class="draw-bar-done" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg>Done
+    </button>
   </div>
 
   <div id="draw-bar" class="draw-bar" role="toolbar" aria-label="Drawing" hidden>
@@ -368,7 +377,6 @@
         <button id="btn-disconnect-teacher" class="tool-btn quiet" type="button" hidden>Disconnect</button>
       </div>
 
-      <label class="check"><input id="set-highlights" type="checkbox"> Tap words on the worksheet to hear them (purple highlight)</label>
       <label class="check"><input id="set-suggestions" type="checkbox"> Word suggestions and spell check</label>
 
       <p class="note"><a href="teacher.html" target="_blank" rel="noopener">For teachers: make QR codes</a></p>
