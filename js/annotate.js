@@ -116,6 +116,7 @@ export function drawItems(ctx, items, pageIndex, width, height, fontFamily) {
  *            onSelect(item | null)      → update the toolbar
  *            onTypedWord(word)          → session log
  *            onTap({page, fx, fy})      → true if the tap was handled (a printed word)
+ *            onBlankTap(spot)           → a short tap on empty paper (show a hint)
  */
 export class Annotator {
   constructor(pageEls, items, callbacks = {}) {
@@ -251,9 +252,13 @@ export class Annotator {
     if (this._suppressClick) { this._suppressClick = false; return; } // it was a long press
     if (this.tool === 'draw') return;
     const { fx, fy } = this._pointInPage(e, pageIndex);
-    // A printed word on the worksheet: read it aloud instead of adding a box.
-    if (this.cb.onTap && this.cb.onTap({ page: pageIndex, fx, fy })) { this.deselect(); return; }
-    this.placeAt(this.tool, pageIndex, fx, fy);
+    // A short tap never adds anything (so a missed word, or a stray tap,
+    // doesn't start typing): it reads a printed word, or just puts away
+    // whatever was being edited. Press and hold opens the menu to add things.
+    const wasEditing = this.selectedId !== null;
+    this.deselect();
+    if (this.cb.onTap && this.cb.onTap({ page: pageIndex, fx, fy })) return;
+    if (!wasEditing && this.cb.onBlankTap) this.cb.onBlankTap({ page: pageIndex, fx, fy, clientX: e.clientX, clientY: e.clientY });
   }
 
   /** Add a text box or stamp centred on a tapped point (fractions of the page). */

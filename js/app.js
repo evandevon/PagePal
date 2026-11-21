@@ -76,7 +76,7 @@ async function openRecord(record, { push = true } = {}) {
     wsSession.logEvent('open');
     resetTools();
     if (record.lastPage > 1) goToPage(record.lastPage, { smooth: false });
-    if (!(record.annotations || []).length) toast('Tap where your answer goes to type. Press and hold for ticks, crosses, drawing and more.', 6000);
+    if (!(record.annotations || []).length) toast('Press and hold where your answer goes to type, talk, tick or draw. Tap a word to hear it.', 6000);
     else if (record.lastPage > 1) toast(`Back on page ${record.lastPage}, where you stopped.`);
     if (push) history.pushState({ ws: record.id }, '', '#ws=' + record.id);
   } catch (err) {
@@ -431,6 +431,12 @@ initViewer({
     onSelect: () => updateTools(),
     onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
     onLongPress: spot => showPageMenu(spot),
+    onBlankTap: () => {
+      // A gentle reminder, not every time.
+      if (Date.now() - lastBlankHint < 8000) return;
+      lastBlankHint = Date.now();
+      toast('Press and hold to write here.', 2500);
+    },
     onTap: ({ page, fx, fy }) => {
       if (!getSetting('showHighlights')) return false;
       const hit = textWordAt(page, fx, fy);
@@ -487,6 +493,8 @@ function markSent(how) {
   rec.editedSinceSent = false;
   flushSave();
 }
+
+let lastBlankHint = 0;
 
 // ── Tap a printed word: read from there to the end of its block ──
 function readFrom(hit) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupWords, splitRun, wordAt, speakable, keepWord, splitNumber } from '../js/page-text.js';
+import { groupWords, splitRun, wordAt, speakable, keepWord, splitNumber, fixCapitalI, overlaps } from '../js/page-text.js';
 
 const W = (t, x, y, w = 0.06, h = 0.02) => ({ t, x, y, w, h, space: true });
 
@@ -49,15 +49,19 @@ test('speakable trims bullets and underscores', () => {
 });
 
 test('a ruled line between two lines of text keeps them apart', () => {
-  const words = [W('root', 0.15, 0.18, 0.04, 0.014), W('stem', 0.15, 0.196, 0.045, 0.012)];
+  const words = [W('tap', 0.15, 0.18, 0.04, 0.014), W('root', 0.2, 0.18, 0.04, 0.014),
+    W('thin', 0.15, 0.196, 0.045, 0.014), W('stem', 0.2, 0.196, 0.045, 0.014)];
   assert.equal(groupWords(words).length, 1);
   assert.equal(groupWords(words, 1.414, [{ y: 0.1945, x0: 0.13, x1: 0.42 }]).length, 2);
 });
 
 test('unsure words are kept only when they look real', () => {
   assert.equal(keepWord('beautiful', 17), true);
-  assert.equal(keepWord('3.', 30), true);
-  assert.equal(keepWord('RET', 41), true);      // capitals could be a heading
+  assert.equal(keepWord('3.', 55), true);
+  assert.equal(keepWord('RET', 41), false);     // unsure capitals: usually a picture misread
+  assert.equal(keepWord('Citi', 21), false);
+  assert.equal(keepWord('I', 92), true);
+  assert.equal(keepWord('cc', 17), false);
   assert.equal(keepWord('pecaus€', 18), false);
   assert.equal(keepWord('|_|', 28), false);
   assert.equal(keepWord('—', 90), false);
@@ -77,4 +81,19 @@ test('words on a tilted photo are hit inside their slanted box', () => {
   // centre (0.35, 0.165): a point along the slant, towards the right end, rising
   const ax = 0.04, ay = Math.tan(r) * ax / 1.414;
   assert.ok(wordAt(blocks, 0.35 + ax, 0.165 + ay));
+});
+
+test('a capital I read as | or l before a word becomes I', () => {
+  assert.deepEqual(fixCapitalI(['|', 'see', 'the']), ['I', 'see', 'the']);
+  assert.deepEqual(fixCapitalI(['Can', 'l', 'go']), ['Can', 'I', 'go']);
+  assert.deepEqual(fixCapitalI(['1', 'see', 'it']), ['I', 'see', 'it']);
+  assert.deepEqual(fixCapitalI(['1', 'apple']), ['1', 'apple']);
+  assert.deepEqual(fixCapitalI(['a', '|', 'B']), ['a', '|', 'B']);
+});
+
+test('stacked single words stay separate; overlapping boxes are spotted', () => {
+  const blocks = groupWords([W('deer', 0.8, 0.232, 0.12, 0.043), W('door', 0.8, 0.283, 0.12, 0.044)]);
+  assert.equal(blocks.length, 2);
+  assert.equal(overlaps(W('cat', 0.1, 0.1), W('cat', 0.11, 0.1)), true);
+  assert.equal(overlaps(W('cat', 0.1, 0.1), W('dog', 0.3, 0.1)), false);
 });

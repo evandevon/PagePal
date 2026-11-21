@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.0'; // tap words on the worksheet to hear them
+export const APP_VERSION = '0.9.1'; // only press-and-hold adds answers; better word finding
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

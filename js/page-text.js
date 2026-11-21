@@ -14,7 +14,7 @@
 import { openPdf, renderPage } from './pdf-doc.js';
 import { blobToCanvas } from './image-tools.js';
 
-export const TEXT_VERSION = 3;
+export const TEXT_VERSION = 6;
 const HAS_LETTER = /[\p{L}\p{N}]/u;
 
 // ── Grouping words into lines and blocks ─────────────
@@ -89,7 +89,12 @@ export function groupWords(words, aspect = 1.414, rules = []) {
       const overlaps = l.x < prev.r && l.r > prev.x;
       const ruled = rules.some(r => r.y > prev.b - prev.h * 0.25 && r.y < l.y + l.h * 0.25 &&
         r.x0 < Math.min(l.r, prev.r) && r.x1 > Math.max(l.x, prev.x));
-      if (gap > -0.3 * l.h && gap < 0.9 * Math.max(l.h, prev.h) && similar && overlaps && !ruled) { best = bl; break; }
+      // Lines of one paragraph sit close: the gap is under about half a line.
+      // (Word boxes include tails like g and y, so heights vary a little.)
+      // Single words stacked up are a list (answer choices, spelling words):
+      // each is read on its own.
+      const list = l.words.length === 1 && prev.words.length === 1;
+      if (gap > -0.3 * l.h && gap < 0.5 * Math.min(l.h, prev.h) && similar && overlaps && !ruled && !list) { best = bl; break; }
     }
     if (best) best.lines.push(l);
     else blocks.push({ lines: [l] });
@@ -332,11 +337,38 @@ function straighten(canvas, angle) {
 export function keepWord(t, confidence) {
   if (!t || !HAS_LETTER.test(t)) return false;
   if (confidence >= 60) return /[\p{L}\p{N}]{2,}|^[\p{L}\p{N}][.)]?$/u.test(t);
-  if (confidence < 12) return false;
   const core = t.replace(/^[("'‘“]+|[.,!?;:)"'’”]+$/g, '');
-  return /^(?:[A-Za-z][a-z]{1,}(?:['’-][a-z]+)*|[A-Z]{2,}|I|a|A|\d{1,4}(?:[.,]\d+)?|\d{1,3}[.)]?)$/.test(core) ||
-    /^\d{1,3}[.)]$/.test(t);
+  // Short words: only common ones, and only when fairly sure.
+  if (core.length <= 2) return confidence >= 50 && (SHORT_WORDS.has(core.toLowerCase()) || /^\d{1,2}[.)]?$/.test(core));
+  // Unsure lowercase words are usually real words on a blurry or crooked
+  // page. Unsure capitals are usually a picture misread ("SER", "Citi").
+  if (/^[a-z]+(?:['’-][a-z]+)*$/.test(core)) return confidence >= 12;
+  if (/^[A-Z][a-z]+(?:['’-][a-z]+)*$/.test(core)) return confidence >= 45;
+  if (/^\d{1,4}(?:[.,]\d+)?$/.test(core)) return confidence >= 40;
+  return false;
 }
+
+const SHORT_WORDS = new Set(('i a am an as at be by do go he if in is it me my no of oh ok on or so to up us we ' +
+  'hi ox ax yo ma pa mr ms dr').split(' '));
+
+/**
+ * A capital I is often read as "|", "l", "1" or "]". Before a lowercase
+ * word ("| see the"), it's an I.
+ */
+export function fixCapitalI(texts) {
+  return texts.map((t, i) => {
+    if (!/^[|l1\]\[!]$/.test(t)) return t;
+    const next = texts[i + 1] || '';
+    if (!/^[a-z]/.test(next)) return t;
+    if (t === '1' && !I_VERBS.has(next.replace(/[^a-z']/g, ''))) return t; // "1 apple" stays 1
+    const prev = texts[i - 1];
+    if (prev && /[\p{L}\p{N}]$/u.test(prev) && /^[A-Z0-9]/.test(prev) === false && t === 'l') return t; // "a l b"? leave
+    return 'I';
+  });
+}
+
+const I_VERBS = new Set(('see saw am can like love have had want went will was got get go do did play think live ' +
+  'know need feel found made make think am\'m').split(' '));
 
 /** "3.school" read as one word → "3." and "school", sharing its box. */
 export function splitNumber(t, x0, x1) {
@@ -344,6 +376,14 @@ export function splitNumber(t, x0, x1) {
   if (!m) return [{ t, x0, x1 }];
   const cut = x0 + (x1 - x0) * (m[1].length / t.length);
   return [{ t: m[1], x0, x1: cut }, { t: m[2], x0: cut, x1 }];
+}
+
+/** Do two word boxes cover much the same spot? */
+export function overlaps(a, b) {
+  const ix = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const iy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (ix <= 0 || iy <= 0) return false;
+  return ix * iy > 0.3 * Math.min(a.w * a.h, b.w * b.h);
 }
 
 /** fn(x0, y0, x1, y1) → share of that box that is paper-coloured. */
@@ -393,27 +433,39 @@ export async function ocrWords(canvas) {
   if (angle) canvas = straighten(canvas, angle);
   const rules = eraseRules(canvas);
   try {
-    const { data } = await worker.recognize(canvas, {}, { blocks: true, text: false });
     const W = canvas.width, H = canvas.height;
     const lightness = paperCheck(canvas);
-    const words = [];
-    for (const block of data.blocks || []) {
-      for (const para of block.paragraphs || []) {
-        for (const line of para.lines || []) {
-          for (const w of line.words || []) {
-            const bb = w.bbox, hgt = bb.y1 - bb.y0, pad = hgt * 0.12;
-            for (const piece of splitNumber(String(w.text || '').trim(), bb.x0, bb.x1)) {
-              if (!keepWord(piece.t, w.confidence)) continue;
-              // A box far too flat or wide for its letters is a bit of a line, not a word.
-              if (hgt < 8 || (piece.x1 - piece.x0) / hgt > 1.6 * piece.t.length + 1.5) continue;
-              // Printed words sit on paper: most of the box is light. "Words" seen in a
-              // dark desk, shadow or picture aren't.
-              if (lightness(piece.x0 - hgt * 0.3, bb.y0 - hgt * 0.3, piece.x1 + hgt * 0.3, bb.y1 + hgt * 0.3) < 0.5) continue;
-              words.push({ t: piece.t, x: piece.x0 / W, y: (bb.y0 - pad) / H, w: (piece.x1 - piece.x0) / W, h: (hgt + pad * 2) / H, space: true });
-            }
+    const collect = data => {
+      const out = [];
+      for (const block of data.blocks || []) {
+        for (const para of block.paragraphs || []) {
+          for (const line of para.lines || []) {
+            const texts = fixCapitalI((line.words || []).map(x => String(x.text || '').trim()));
+            (line.words || []).forEach((w, wi) => {
+              const bb = w.bbox, hgt = bb.y1 - bb.y0, pad = hgt * 0.12;
+              for (const piece of splitNumber(texts[wi], bb.x0, bb.x1)) {
+                if (!keepWord(piece.t, w.confidence)) continue;
+                // A box far too flat or wide for its letters is a bit of a line, not a word.
+                if (hgt < 8 || (piece.x1 - piece.x0) / hgt > 1.1 * piece.t.length + 1) continue;
+                // Printed words sit on paper: most of the box is light. "Words" seen in a
+                // dark desk, shadow or picture aren't.
+                if (lightness(piece.x0 - hgt * 0.3, bb.y0 - hgt * 0.3, piece.x1 + hgt * 0.3, bb.y1 + hgt * 0.3) < 0.5) continue;
+                out.push({ t: piece.t, x: piece.x0 / W, y: (bb.y0 - pad) / H, w: (piece.x1 - piece.x0) / W, h: (hgt + pad * 2) / H, space: true });
+              }
+            });
           }
         }
       }
+      return out;
+    };
+    // Two readings: the normal one follows lines of text well (titles,
+    // instructions); "sparse text" finds words scattered among pictures and
+    // boxes that the normal one skips. Keep the first, add what only the second saw.
+    await worker.setParameters({ tessedit_pageseg_mode: '3' });
+    const words = collect((await worker.recognize(canvas, {}, { blocks: true, text: false })).data);
+    await worker.setParameters({ tessedit_pageseg_mode: '11' });
+    for (const w of collect((await worker.recognize(canvas, {}, { blocks: true, text: false })).data)) {
+      if (!words.some(v => overlaps(v, w))) words.push(w);
     }
     const blocks = groupWords(words, H / W, rules);
     if (!angle) return blocks;
