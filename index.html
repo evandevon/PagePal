@@ -46,7 +46,7 @@
   <main id="home">
     <section class="card name-card">
       <label for="student-name" class="name-label">My name</label>
-      <input id="student-name" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Type your name">
+      <input id="student-name" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="First name and initial, e.g. Mia S">
     </section>
 
     <section aria-labelledby="h-start">
@@ -150,7 +150,7 @@
       <button id="viewer-back" class="icon-btn" type="button" aria-label="Back to home">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <button id="viewer-title" class="viewer-title" type="button" title="Tap to rename"></button>
+      <button id="viewer-title" class="viewer-title" type="button" title="Tap to rename the worksheet"><span id="viewer-title-text"></span><svg class="title-pencil" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg></button>
       <div class="viewer-nav">
         <button id="viewer-prev" class="icon-btn" type="button" aria-label="Previous page">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>
@@ -313,7 +313,13 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p id="send-dialog-who" class="note"></p>
+      <div class="send-names">
+        <label class="send-name"><span>Your name</span>
+          <input id="sd-student" type="text" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="60" placeholder="e.g. Mia S"></label>
+        <label class="send-name"><span>Worksheet name</span>
+          <input id="sd-worksheet" type="text" autocomplete="off" maxlength="100" placeholder="e.g. Fractions page 12"></label>
+        <p id="sd-name-hint" class="note send-name-hint" hidden>Give your worksheet a name your teacher will know, like “Fractions page 12”.</p>
+      </div>
       <dl id="send-dialog-stats" class="stats"></dl>
       <div class="send-tools options stack">
         <button id="sd-teacher" class="tool-btn primary" type="button" hidden>Send to teacher</button>

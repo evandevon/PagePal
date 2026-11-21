@@ -108,6 +108,20 @@ python3 -m http.server 8000
 
 Then open http://localhost:8000. Run the unit tests with `node --test` (Node 20 or later). `package.json` exists only for the tests; the site needs no install.
 
+## Names, files and folders
+
+Every send carries the **student's name** and the **worksheet name**. Both are editable at the top of the Send dialog (and the worksheet name by tapping the title bar). Each worksheet remembers the student who started it, so on a shared iPad Mia's sheet still says Mia, and when Jack scans the same worksheet QR code he gets his own fresh copy.
+
+| Where | Organised as |
+|---|---|
+| Teacher's Drive (Send to teacher) | `PagePal submissions › 3/4K › Fractions page 12 › Mia S – Fractions page 12 – 2026-11-21 1430.pdf` (class, then worksheet; files sort by student; sending again adds a new, later file) |
+| Teacher's sheet | One row per send: student, worksheet, class, stats, answers, PDF link. Filter or sort by the Worksheet column. |
+| Save to Files / share | `Mia-S_Fractions-page-12_2026-11-21_1430.csv` plus `…_p1.jpg`, `…_p2.jpg` (one name per sitting, so the CSV and its pictures stay paired) |
+
+Tips for tidy folders: students type **first name and surname initial** (`Mia S`) the same way every time; worksheets from a teacher's worksheet QR code arrive already named, so students don't need to rename them; photos and blank pages get a made-up name, and the Send dialog asks for a better one.
+
+**Unfinished work** is saved on the iPad as the student goes. **My worksheets** on the home screen shows each one with the student's name and *Not sent yet*, *Sent 21 Nov* or *Sent · changed since*. Tapping it reopens on the page where the student stopped. Safari may clear a website's saved data after 7 days without a visit, so add PagePal to the Home Screen on shared iPads (the Home Screen app keeps its data).
+
 ## Security
 
 How sending work to a teacher is protected (details in the teacher set-up guide):

@@ -1,7 +1,8 @@
 /**
- * PagePal Inbox (version 2)
+ * PagePal Inbox (version 3)
  * Receives work that students send from PagePal and files it in this
- * Google Sheet, with page pictures saved to your Google Drive.
+ * Google Sheet. PDFs of the work go in your Google Drive, in
+ * PagePal submissions › Class › Worksheet › "Student – Worksheet – date time.pdf".
  *
  * Set-up (see the teacher guide):
  *   1. Paste this whole file into Extensions › Apps Script › Code.gs.
@@ -23,7 +24,7 @@
  *   - Nothing can be read back through the web address.
  */
 
-const VERSION = 2;
+const VERSION = 3;
 const SHEET_NAME = 'Submissions';
 const FOLDER_NAME = 'PagePal submissions';
 const HEADERS = [
@@ -150,11 +151,15 @@ function submit_(data) {
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HHmm');
   const notes = [];
 
+  // Drive: PagePal submissions › Class › Worksheet › "Student – Worksheet – date time.pdf"
+  // so a class's answers to one worksheet sit together, sorted by student.
   let pageUrl = '', pdfUrl = '';
   if (data.image || data.pdf) {
-    const folderId = withLock_(function () { return subFolderId_(worksheet.replace(/[\/\\]/g, '-')); });
-    pageUrl = saveFile_(folderId, data.image, student + ' – ' + stamp, notes);
-    pdfUrl = saveFile_(folderId, data.pdf, student + ' – ' + stamp, notes);
+    const className = safeName_(text_(data.className, 80)) || 'My class';
+    const folderId = withLock_(function () { return subFolderId_([className, safeName_(worksheet)]); });
+    const fileName = [label, worksheet, stamp].map(safeName_).join(' – ');
+    pageUrl = saveFile_(folderId, data.image, fileName, notes);
+    pdfUrl = saveFile_(folderId, data.pdf, fileName, notes);
   }
 
   const row = [
@@ -246,16 +251,27 @@ function getFolderId_() {
   return created;
 }
 
-/** One sub-folder per worksheet, remembered by name. */
-function subFolderId_(name) {
+/**
+ * Nested sub-folders, e.g. ['3/4K', 'Fractions page 12'], each made once and
+ * remembered by its path. Names that differ only in capitals share a folder.
+ */
+function subFolderId_(names) {
   const props = PropertiesService.getScriptProperties();
-  const parent = getFolderId_();
   let map = {};
   try { map = JSON.parse(props.getProperty('SUBFOLDERS') || '{}'); } catch (err) { map = {}; }
-  if (map[name] && folderExists_(map[name])) return map[name];
-  map[name] = createFolder_(name, parent);
-  props.setProperty('SUBFOLDERS', JSON.stringify(map));
-  return map[name];
+  let parent = getFolderId_(), path = '', changed = false;
+  names.forEach(function (name) {
+    path += '/' + name.toLowerCase();
+    if (!(map[path] && folderExists_(map[path]))) { map[path] = createFolder_(name, parent); changed = true; }
+    parent = map[path];
+  });
+  if (changed) props.setProperty('SUBFOLDERS', JSON.stringify(map));
+  return parent;
+}
+
+/** A name that's safe and tidy as a Drive file or folder name. */
+function safeName_(s) {
+  return String(s || '').replace(/[\/\\:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100);
 }
 
 function driveUpload_(blob, folderId) {

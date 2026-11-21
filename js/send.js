@@ -64,6 +64,7 @@ export async function saveWork(work) {
   toast(files.length > 1
     ? `Saved ${files.length} files. On iPad, look in Files › Downloads.`
     : 'Saved. On iPad, look in Files › Downloads.', 4000);
+  return 'saved';
 }
 
 function blobToBase64(blob) {

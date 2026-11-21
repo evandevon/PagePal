@@ -12,7 +12,7 @@ import { openPdf, pdfThumbnail, pdfTitle } from './pdf-doc.js';
 import { canvasToBlob, thumbnail, blobToCanvas } from './image-tools.js';
 import { docxToCanvases, DOCX_TYPE } from './docx-doc.js';
 import { looksLikePdf } from './remote.js';
-import { renderTemplate, getTemplate } from './templates.js';
+import { renderTemplate, getTemplate, TEMPLATES } from './templates.js';
 
 export class UnsupportedFileError extends Error {}
 
@@ -114,10 +114,26 @@ export function cleanName(name) {
   return String(name || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_]+/g, ' ').trim();
 }
 
-export async function findBySource(sourceKey) {
+/**
+ * A saved copy of the same worksheet (same Drive file or link) for this
+ * student. On a shared iPad, another student's copy is never reused: they
+ * get a fresh one.
+ */
+export async function findBySource(sourceKey, student = '') {
   if (!sourceKey) return null;
   const all = await store.recentWorksheets(1000);
-  return all.find(w => w.sourceKey === sourceKey) || null;
+  const who = sameName(student);
+  return all.find(w => w.sourceKey === sourceKey && (!w.student || !who || sameName(w.student) === who)) || null;
+}
+
+const sameName = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+/** True for names PagePal made up ("Photo 21 Nov 2:30 pm", "Lined"), which a teacher won't recognise. */
+export function isPlaceholderTitle(title) {
+  const t = String(title || '').trim();
+  if (!t) return true;
+  if (/^(Photo|Picture|Pasted picture) \d{1,2} \w{3,4}\b/.test(t)) return true;
+  return TEMPLATES.some(x => x.name === t);
 }
 
 export async function rename(record, title) {

@@ -683,3 +683,17 @@ dialog.wide-dialog { width: min(760px, calc(100vw - 24px)); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 .add-btn.active { background: var(--brand); color: #fff; }
+
+/* ── Names on the Send dialog, worksheet status ─────── */
+.send-names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 12px; }
+.send-name span { display: block; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.send-name input { width: 100%; font-size: 17px; min-height: 44px; }
+.send-name-hint { grid-column: 1 / -1; margin: 0; }
+@media (max-width: 520px) { .send-names { grid-template-columns: 1fr; } }
+.viewer-title { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-start; }
+.viewer-title > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.title-pencil { width: 16px; height: 16px; flex: none; opacity: .55; }
+.badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.badge-todo { background: #fff3d6; color: #7a5200; }
+.badge-sent { background: #e2f5e6; color: #1d6b31; }
+body.mode-highcontrast .badge, body.mode-darkblue .badge { background: transparent; color: inherit; border: 1px solid currentColor; }

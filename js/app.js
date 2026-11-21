@@ -16,7 +16,7 @@ import { cropImage } from './crop.js';
 import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
-import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, pageImages, visibleSpot, goToPage } from './viewer.js';
+import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage } from './viewer.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
@@ -38,14 +38,15 @@ nameInput.addEventListener('input', () => {
   if (wsSession) wsSession.student = name;
 });
 
-function askName() {
-  const name = (prompt('What’s your name?') || '').trim();
-  if (!name) return false;
+/** The name on the open worksheet. Also becomes this iPad's name for next time. */
+function setWorkStudent(name) {
+  name = String(name || '').trim().slice(0, 60);
   setSetting('studentName', name);
   nameInput.value = name;
   practice.student = name;
   if (wsSession) wsSession.student = name;
-  return true;
+  const rec = currentWorksheet();
+  if (rec) { rec.student = name; scheduleSave(); }
 }
 
 // ── Sessions: the practice card, and the open worksheet ─
@@ -65,11 +66,17 @@ function explain(err) {
 async function openRecord(record, { push = true } = {}) {
   const hide = showBusy('Opening the worksheet…');
   try {
-    wsSession = SessionLog.fromState(record.session, { student: getSetting('studentName'), worksheet: record.title });
+    // Each worksheet keeps the name of the student who started it, so on a
+    // shared iPad Mia's sheet still says Mia when Jack has the iPad.
+    const student = record.student || getSetting('studentName');
+    if (!record.student && student) record.student = student;
+    wsSession = SessionLog.fromState(record.session, { student, worksheet: record.title });
     await openWorksheet(record);
     wsSession.logEvent('open');
     resetTools();
+    if (record.lastPage > 1) goToPage(record.lastPage, { smooth: false });
     if (!(record.annotations || []).length) toast('Tap where your answer goes to type. Press and hold for ticks, crosses, drawing and more.', 6000);
+    else if (record.lastPage > 1) toast(`Back on page ${record.lastPage}, where you stopped.`);
     if (push) history.pushState({ ws: record.id }, '', '#ws=' + record.id);
   } catch (err) {
     closeWorksheet();
@@ -107,6 +114,7 @@ function flushSave() {
   if (!rec || !annot || !wsSession) return;
   rec.annotations = annot.items;
   rec.session = wsSession.toState();
+  rec.lastPage = currentPageNumber();
   worksheets.update(rec).catch(err => console.warn('Could not save', err));
 }
 window.addEventListener('pagehide', flushSave);
@@ -177,7 +185,7 @@ function askNextPhoto(n) {
 
 async function openLink(link) {
   const sourceKey = link.type === 'drive' ? 'drive:' + link.id : link.url;
-  const existing = await worksheets.findBySource(sourceKey).catch(() => null);
+  const existing = await worksheets.findBySource(sourceKey, getSetting('studentName')).catch(() => null);
   if (existing) {
     toast('Opening your saved copy.');
     return openRecord(existing);
@@ -351,6 +359,13 @@ document.addEventListener('paste', e => {
 });
 
 // ── Recent worksheets ──────────────────────────────────
+function sentBadge(w) {
+  if (!w.sentAt) {
+    return (w.annotations || []).length ? '<span class="badge badge-todo">Not sent yet</span>' : '';
+  }
+  const day = new Date(w.sentAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  return `<span class="badge badge-sent">${escapeHtml(w.sentHow || 'Sent')} ${day}${w.editedSinceSent ? ' · changed since' : ''}</span>`;
+}
 let thumbUrls = [];
 async function renderRecent() {
   const list = $('#recent-list');
@@ -369,7 +384,8 @@ async function renderRecent() {
       <button class="recent-open" type="button">
         ${url ? `<img src="${url}" alt="">` : ''}
         <span class="recent-title">${escapeHtml(w.title)}</span>
-        <span class="recent-date">${w.pageCount} page${w.pageCount === 1 ? '' : 's'} · ${when}</span>
+        <span class="recent-date">${w.student ? escapeHtml(w.student) + ' · ' : ''}${w.pageCount} page${w.pageCount === 1 ? '' : 's'} · ${when}</span>
+        ${sentBadge(w)}
       </button>
       <button class="recent-delete" type="button" aria-label="Remove ${escapeHtml(w.title)}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -405,7 +421,12 @@ function renderStatsInto(el, session, answer) {
 initViewer({
   onBack: backToHome,
   annotations: {
-    onChange: () => { if (wsSession) wsSession.activity(); scheduleSave(); updateTools(); },
+    onChange: () => {
+      if (wsSession) wsSession.activity();
+      const rec = currentWorksheet();
+      if (rec && rec.sentAt) rec.editedSinceSent = true;
+      scheduleSave(); updateTools();
+    },
     onSelect: () => updateTools(),
     onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
     onLongPress: spot => showPageMenu(spot),
@@ -417,7 +438,9 @@ initViewer({
     const ws = currentWorksheet();
     wsSession.worksheet = ws ? ws.title : wsSession.worksheet;
     const teacher = getSetting('teacher');
-    $('#send-dialog-who').textContent = (wsSession.student ? wsSession.student + ' · ' : '') + wsSession.worksheet;
+    $('#sd-student').value = wsSession.student || '';
+    $('#sd-worksheet').value = wsSession.worksheet || '';
+    $('#sd-name-hint').hidden = !worksheets.isPlaceholderTitle(wsSession.worksheet);
     renderStatsInto($('#send-dialog-stats'), wsSession, worksheetAnswer());
     $('#sd-teacher').hidden = !teacher;
     $('#sd-connect').hidden = !!teacher;
@@ -426,13 +449,44 @@ initViewer({
   },
 });
 
-async function runSend(fn, work, button) {
-  if (!work.session.student && !askName()) return;
+// Both names go into the file names and the teacher's folders, so they're
+// editable right here, just before sending.
+$('#sd-student').addEventListener('input', e => setWorkStudent(e.target.value));
+$('#sd-worksheet').addEventListener('change', async e => {
+  const t = e.target.value.trim();
+  if (!t) return;
+  await renameCurrent(t);
+  wsSession.worksheet = t;
+  $('#sd-name-hint').hidden = !worksheets.isPlaceholderTitle(t);
+});
+
+/** Both names filled in? Otherwise point at the empty one. */
+function namesReady() {
+  const who = $('#sd-student'), what = $('#sd-worksheet');
+  if (!who.value.trim()) { toast('Type your name first, so your teacher knows it’s yours.'); who.focus(); return false; }
+  if (!what.value.trim()) { toast('Give the worksheet a name.'); what.focus(); return false; }
+  if (what.value.trim() !== wsSession.worksheet) { renameCurrent(what.value); wsSession.worksheet = what.value.trim(); }
+  return true;
+}
+
+/** Remember that this worksheet went somewhere, for the "My worksheets" list. */
+function markSent(how) {
+  const rec = currentWorksheet();
+  if (!rec) return;
+  rec.sentAt = Date.now();
+  rec.sentHow = how;
+  rec.editedSinceSent = false;
+  flushSave();
+}
+
+async function runSend(fn, work, button, how) {
+  if (!namesReady()) return;
   if (sendDialog.open) sendDialog.close();
   button.disabled = true;
   const hide = showBusy('Getting your work ready…');
   try {
-    await fn(work);
+    const result = await fn(work);
+    if (result === true || result === 'shared' || result === 'saved') markSent(how);
   } catch (err) {
     console.warn(err);
     toast('Something went wrong. Try again.', 5000);
@@ -442,14 +496,14 @@ async function runSend(fn, work, button) {
   }
 }
 
-$('#sd-share').addEventListener('click', e => runSend(shareWork, worksheetWork(), e.currentTarget));
-$('#sd-save').addEventListener('click', e => runSend(saveWork, worksheetWork(), e.currentTarget));
+$('#sd-share').addEventListener('click', e => runSend(shareWork, worksheetWork(), e.currentTarget, 'Shared'));
+$('#sd-save').addEventListener('click', e => runSend(saveWork, worksheetWork(), e.currentTarget, 'Saved'));
 $('#sd-email').addEventListener('click', () => {
-  if (!wsSession.student && !askName()) return;
+  if (!namesReady()) return;
   sendDialog.close();
   emailSummary(worksheetWork());
 });
-$('#sd-teacher').addEventListener('click', e => runSend(sendToTeacher, worksheetWork(), e.currentTarget));
+$('#sd-teacher').addEventListener('click', e => runSend(sendToTeacher, worksheetWork(), e.currentTarget, 'Sent'));
 sendDialog.addEventListener('click', e => { if (e.target === sendDialog) sendDialog.close(); });
 $('#sd-connect').addEventListener('click', async () => {
   sendDialog.close();
@@ -905,4 +959,9 @@ if ('serviceWorker' in navigator && secure) {
 })();
 
 // Tells the start-up check in the page that the code loaded.
+// Ask the browser to keep saved worksheets, so unfinished work isn't cleared
+// to free up space. (Safari may still clear it after 7 days without a visit
+// unless PagePal is added to the Home Screen.)
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
 window.__pagepalReady = true;

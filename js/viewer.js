@@ -19,6 +19,11 @@ export function currentWorksheet() {
 }
 
 /** The text boxes and stamps on the open worksheet. */
+/** The page the student is looking at (1-based). */
+export function currentPageNumber() {
+  return current ? current.pageNumber || 1 : 1;
+}
+
 export function currentAnnotator() {
   return current && current.annot;
 }
@@ -107,9 +112,17 @@ function updatePageLabel() {
   $('#viewer-next').disabled = n >= current.pages.length;
 }
 
-export function goToPage(n) {
+export function goToPage(n, { smooth = true } = {}) {
   const p = current && current.pages[n - 1];
-  if (p) $('#viewer-scroll').scrollTo({ top: p.el.offsetTop - 12, behavior: 'smooth' });
+  if (p) $('#viewer-scroll').scrollTo({ top: p.el.offsetTop - 12, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+/** Rename the open worksheet (title bar and saved copy). */
+export async function renameCurrent(title) {
+  const t = String(title || '').trim().slice(0, 100);
+  if (!current || !t) return;
+  $('#viewer-title-text').textContent = t;
+  await worksheets.rename(current.record, t);
 }
 
 /** Open a worksheet record on screen. */
@@ -117,7 +130,7 @@ export async function openWorksheet(record) {
   closeWorksheet();
   $('#home').hidden = true;
   $('#viewer').hidden = false;
-  $('#viewer-title').textContent = record.title;
+  $('#viewer-title-text').textContent = record.title;
   $('#viewer-add-page').hidden = !record.template;
   const container = $('#viewer-pages');
   container.textContent = '';
@@ -235,10 +248,7 @@ export function initViewer({ onBack, onSend, annotations = {} }) {
   $('#viewer-title').addEventListener('click', async () => {
     if (!current) return;
     const t = prompt('Worksheet name', current.record.title);
-    if (t && t.trim()) {
-      await worksheets.rename(current.record, t.trim());
-      $('#viewer-title').textContent = t.trim();
-    }
+    if (t && t.trim()) await renameCurrent(t);
   });
 
   scroller.addEventListener('scroll', () => { updatePageLabel(); scheduleSharpen(); }, { passive: true });
