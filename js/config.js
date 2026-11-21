@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.8.0'; // names on the Send dialog, resume where you stopped
+export const APP_VERSION = '0.9.0'; // tap words on the worksheet to hear them
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

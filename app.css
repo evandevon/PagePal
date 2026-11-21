@@ -524,6 +524,7 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
   .draw-bar, .talk-stop { bottom: calc(12px + env(safe-area-inset-bottom)); }
   .viewer:has(~ .draw-bar:not([hidden])) .viewer-tools { visibility: hidden; }
   body .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  body .speak-stop { bottom: calc(80px + env(safe-area-inset-bottom)); } /* above the tools, not on them */
 }
 
 /* Short screens: the crop screen's bars take less room. */
@@ -601,7 +602,6 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
   border: 4px solid var(--brand-soft); border-top-color: var(--brand);
   animation: spin 0.9s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── New page picker ──────────────────────────────── */
 dialog.wide-dialog { width: min(760px, calc(100vw - 24px)); }
@@ -697,3 +697,28 @@ dialog.wide-dialog { width: min(760px, calc(100vw - 24px)); }
 .badge-todo { background: #fff3d6; color: #7a5200; }
 .badge-sent { background: #e2f5e6; color: #1d6b31; }
 body.mode-highcontrast .badge, body.mode-darkblue .badge { background: transparent; color: inherit; border: 1px solid currentColor; }
+
+/* ── Printed words: tap to hear ─────────────────────── */
+.text-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.tw {
+  position: absolute; border-radius: 3px;
+  background: rgba(124, 77, 255, 0.13);
+}
+.tw.speaking { background: rgba(124, 77, 255, 0.42); box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.55); }
+.viewer-pages.hide-text .text-layer { display: none; }
+body.mode-highcontrast .tw { background: rgba(255, 230, 0, 0.18); }
+body.mode-highcontrast .tw.speaking { background: rgba(255, 230, 0, 0.55); box-shadow: 0 0 0 2px #ffe600; }
+
+.speak-stop { background: #6a3fd9; box-shadow: 0 6px 20px rgba(106, 63, 217, 0.4); }
+.speak-stop svg { width: 20px; height: 20px; fill: #fff; stroke: none; }
+
+.text-status {
+  position: sticky; top: 8px; z-index: 5; width: max-content; max-width: calc(100% - 24px);
+  margin: 0 auto -40px; display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 999px;
+  background: rgba(40, 24, 90, 0.88); color: #fff; font-size: 14px; font-weight: 600;
+  pointer-events: none;
+}
+.text-status .spinner { display: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .8s linear infinite; }
+.text-status.busy .spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }

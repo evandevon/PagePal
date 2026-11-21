@@ -1,7 +1,7 @@
 // PagePal — connects the modules to the page.
 
 import { APP_VERSION } from './config.js';
-import { $, toast, escapeHtml, showBusy, setBusyText, pickFile } from './ui.js';
+import { $, toast, hideToast, escapeHtml, showBusy, setBusyText, pickFile } from './ui.js';
 import { getSettings, getSetting, setSetting } from './settings.js';
 import { DISPLAY_MODES, applyDisplayMode } from './display-modes.js';
 import * as tts from './tts.js';
@@ -16,7 +16,8 @@ import { cropImage } from './crop.js';
 import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
-import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage } from './viewer.js';
+import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, textWordAt, highlightWord, setTextShown } from './viewer.js';
+import { speakable, warmUpOcr } from './page-text.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
@@ -430,7 +431,15 @@ initViewer({
     onSelect: () => updateTools(),
     onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
     onLongPress: spot => showPageMenu(spot),
+    onTap: ({ page, fx, fy }) => {
+      if (!getSetting('showHighlights')) return false;
+      const hit = textWordAt(page, fx, fy);
+      if (!hit) return false;
+      readFrom(hit);
+      return true;
+    },
   },
+  text: { onStatus: showTextStatus },
   onSend: () => {
     if (!wsSession) return;
     flushSave();
@@ -477,6 +486,54 @@ function markSent(how) {
   rec.sentHow = how;
   rec.editedSinceSent = false;
   flushSave();
+}
+
+// ── Tap a printed word: read from there to the end of its block ──
+function readFrom(hit) {
+  if (viewerDictation) viewerDictation.abort();
+  const words = hit.words.slice(hit.index);
+  const tapped = speakable(words[0].t).replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  if (wsSession && tapped) wsSession.logListen(tapped, 'word');
+  highlightWord(hit.page, hit.block, hit.index);
+  tts.readWords(words.map(w => speakable(w.t)), {
+    onWord: k => highlightWord(hit.page, hit.block, hit.index + k),
+  });
+}
+
+tts.onSpeakingChange(on => {
+  if (on) hideToast(); // so the Stop button isn't hidden behind a message
+  $('#speak-stop').hidden = !on;
+  if (!on) highlightWord(null);
+});
+$('#speak-stop').addEventListener('click', () => tts.stop());
+
+let statusTimer = null;
+function showTextStatus(s) {
+  const box = $('#text-status'), msg = $('#text-status-msg');
+  clearTimeout(statusTimer);
+  box.classList.toggle('busy', s.state === 'working');
+  if (s.state === 'working') {
+    msg.textContent = s.total > 1
+      ? `Finding words to read aloud… page ${s.page} of ${s.total}`
+      : 'Finding words to read aloud…';
+    box.hidden = false;
+  } else if (s.state === 'done') {
+    if (s.fresh && s.found && getSetting('showHighlights')) {
+      msg.textContent = 'Tap a purple word to hear it.';
+      box.hidden = false;
+      statusTimer = setTimeout(() => { box.hidden = true; }, 4000);
+    } else if (s.fresh && !s.found) {
+      msg.textContent = 'No words found to read on this worksheet.';
+      box.hidden = false;
+      statusTimer = setTimeout(() => { box.hidden = true; }, 4000);
+    } else box.hidden = true;
+  } else {
+    msg.textContent = navigator.onLine === false
+      ? 'Words can be read aloud once PagePal has been online once.'
+      : 'Couldn’t find the words on this worksheet.';
+    box.hidden = false;
+    statusTimer = setTimeout(() => { box.hidden = true; }, 5000);
+  }
 }
 
 async function runSend(fn, work, button, how) {
@@ -877,6 +934,15 @@ const emailInput = $('#set-teacher-email');
 emailInput.value = settings.teacherEmail || '';
 emailInput.addEventListener('change', () => setSetting('teacherEmail', emailInput.value.trim()));
 
+const highlightBox = $('#set-highlights');
+highlightBox.checked = settings.showHighlights;
+setTextShown(settings.showHighlights);
+highlightBox.addEventListener('change', () => {
+  setSetting('showHighlights', highlightBox.checked);
+  setTextShown(highlightBox.checked);
+  if (!highlightBox.checked) tts.stop();
+});
+
 const suggestBox = $('#set-suggestions');
 suggestBox.checked = settings.suggestions;
 suggestBox.addEventListener('change', () => setSetting('suggestions', suggestBox.checked));
@@ -963,5 +1029,12 @@ if ('serviceWorker' in navigator && secure) {
 // to free up space. (Safari may still clear it after 7 days without a visit
 // unless PagePal is added to the Home Screen.)
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+// Fetch the text-recognition files once the app has settled, so worksheets
+// can be read aloud offline later. Only when PagePal runs as the installed
+// app or the service worker is ready (so the files are kept).
+setTimeout(() => {
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) warmUpOcr();
+}, 20000);
 
 window.__pagepalReady = true;

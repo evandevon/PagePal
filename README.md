@@ -14,7 +14,7 @@ PagePal builds on two earlier projects: [Say It, Spell It](https://evandevon.git
 - [x] **New page:** lined (wide / narrow), handwriting (dotted middle line), story page, 1 cm and 5 mm squares, dot grid, blank; Add page for longer work.
 - [ ] **Stage 3: Dictation on the page.** Done: hold-to-talk into the selected box, Hear. Still to do: word suggestions and spell check from Word Helper.
 - [ ] **Stage 4: QR to PDF.** Mostly done in Stage 1 (scanning, Drive links, teacher QR page); needs the Google API key below and testing on school iPads.
-- [ ] **Stage 5: Read aloud.** Text from PDFs, on-device text recognition for photos, tap a word or play a block.
+- [x] **Stage 5: Read aloud.** Printed words on the worksheet get a faint purple highlight; tap one to hear from that word to the end of its sentence or block, with each word lit up as it's spoken and a **Stop reading** button. PDFs use their own text (instant); photos, Word files and scanned PDFs use on-device text recognition (Tesseract), which straightens crooked photos and ignores ruled lines. Found words are saved with the worksheet. Settings has an on/off switch.
 - [ ] **Stage 6: Data and reports.** Full report, timeline graph, and "Send to teacher" into the teacher's own Google Sheet, set up by scanning a teacher QR code.
 - [ ] **Stage 7: Polish and rollout.** Accessibility checks, testing on school iPads and Chromebooks, teacher guide.
 
@@ -88,6 +88,7 @@ js/
   remote.js            Downloading from Google Drive (API key) or the web
   send.js              Share, save, email and Send to teacher, with paired file names
   pdf-writer.js        Tiny PDF maker (one JPEG per page) for Send to teacher
+  page-text.js         Finding printed words (PDF text or text recognition) for tap-to-hear
   teacher.js           Teacher page logic
   ui.js                Small shared helpers
 lib/                   Third-party libraries, kept locally for offline use (see lib/README.md)
@@ -139,7 +140,7 @@ How sending work to a teacher is protected (details in the teacher set-up guide)
 
 ## Privacy
 
-There are no accounts, no server and no analytics. Names, answers and session data stay on the device until a student chooses to share them. Dictation audio is processed by the browser maker's speech service (Google in Chrome, Apple in Safari); read-aloud runs on the device.
+There are no accounts, no server and no analytics. Names, answers and session data stay on the device until a student chooses to share them. Dictation audio is processed by the browser maker's speech service (Google in Chrome, Apple in Safari); read-aloud and text recognition run on the device, so worksheet photos are never uploaded for reading.
 
 ## Credits
 

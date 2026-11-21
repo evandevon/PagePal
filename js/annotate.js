@@ -115,6 +115,7 @@ export function drawItems(ctx, items, pageIndex, width, height, fontFamily) {
  * callbacks: onChange(items)            → save
  *            onSelect(item | null)      → update the toolbar
  *            onTypedWord(word)          → session log
+ *            onTap({page, fx, fy})      → true if the tap was handled (a printed word)
  */
 export class Annotator {
   constructor(pageEls, items, callbacks = {}) {
@@ -250,6 +251,8 @@ export class Annotator {
     if (this._suppressClick) { this._suppressClick = false; return; } // it was a long press
     if (this.tool === 'draw') return;
     const { fx, fy } = this._pointInPage(e, pageIndex);
+    // A printed word on the worksheet: read it aloud instead of adding a box.
+    if (this.cb.onTap && this.cb.onTap({ page: pageIndex, fx, fy })) { this.deselect(); return; }
     this.placeAt(this.tool, pageIndex, fx, fy);
   }
 

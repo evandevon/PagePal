@@ -122,11 +122,31 @@ export function wordIndexAt(starts, charIndex) {
 }
 
 let runId = 0;
+// Voices seen to report word positions (so no guessing is needed).
+const boundaryVoices = new Set();
+const voiceKey = v => (v ? v.name : 'default');
+let speakingNow = false;
+const speakingListeners = new Set();
+
+function setSpeaking(on) {
+  if (on === speakingNow) return;
+  speakingNow = on;
+  speakingListeners.forEach(fn => fn(on));
+}
+
+/** fn(true | false) when reading aloud starts and stops (for a Stop button). */
+export function onSpeakingChange(fn) {
+  speakingListeners.add(fn);
+  return () => speakingListeners.delete(fn);
+}
+
+export const isSpeaking = () => speakingNow;
 
 /** Stop anything currently being read. */
 export function stop() {
   runId++;
   if (synth) synth.cancel();
+  setSpeaking(false);
 }
 
 /**
@@ -141,21 +161,45 @@ export function speak(text, opts = {}) {
     const chunks = splitIntoChunks(text);
     const voice = currentVoice();
     let i = 0;
+    setSpeaking(true);
 
     const next = () => {
-      if (myRun !== runId || i >= chunks.length) { resolve(); return; }
+      if (myRun !== runId || i >= chunks.length) {
+        if (myRun === runId) setSpeaking(false);
+        resolve();
+        return;
+      }
       const chunk = chunks[i++];
       const u = new SpeechSynthesisUtterance(chunk.text);
       if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = SPEECH_LANG;
       u.rate = rate;
       u.pitch = 1;
+      // Some voices (Chrome's online Google voices, a few others) never say
+      // which word they're on. For those, guess from the speaking rate so the
+      // highlight still moves along; a real word event cancels the guessing.
+      let guessTimers = [];
+      const stopGuessing = () => { guessTimers.forEach(clearTimeout); guessTimers = []; };
+      u.onstart = () => {
+        if (!opts.onBoundary || boundaryVoices.has(voiceKey(voice))) return;
+        const cps = 13.5 * rate; // characters a second at this rate
+        const re = /\S+/g;
+        let m;
+        while ((m = re.exec(chunk.text)) !== null) {
+          const at = m.index;
+          guessTimers.push(setTimeout(() => {
+            if (myRun === runId) opts.onBoundary(chunk.offset + at);
+          }, (at / cps) * 1000 + 120));
+        }
+      };
       u.onboundary = e => {
         if (myRun !== runId) return;
         if (e.name && e.name !== 'word') return;
+        if (guessTimers.length) stopGuessing();
+        boundaryVoices.add(voiceKey(voice));
         opts.onBoundary && opts.onBoundary(chunk.offset + e.charIndex);
       };
-      u.onend = next;
-      u.onerror = next; // 'interrupted' / 'canceled' end the run via runId
+      u.onend = () => { stopGuessing(); next(); };
+      u.onerror = () => { stopGuessing(); next(); }; // 'interrupted' / 'canceled' end the run via runId
       synth.speak(u);
     };
     next();

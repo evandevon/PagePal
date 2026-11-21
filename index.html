@@ -214,6 +214,7 @@
       <div id="viewer-mic-preview" class="viewer-mic-preview" role="status" aria-live="polite"></div>
     </div>
     <div id="viewer-scroll" class="viewer-scroll">
+      <div id="text-status" class="text-status" role="status" hidden><span class="spinner" aria-hidden="true"></span><span id="text-status-msg"></span></div>
       <div id="viewer-pages" class="viewer-pages"></div>
     </div>
   </section>
@@ -237,6 +238,10 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg>Done drawing
     </button>
   </div>
+
+  <button id="speak-stop" class="talk-stop speak-stop" type="button" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span>Stop reading</span>
+  </button>
 
   <button id="talk-stop" class="talk-stop" type="button" hidden>
     <span class="rec-dot" aria-hidden="true"></span><span>Listening… tap to stop</span>
@@ -363,6 +368,7 @@
         <button id="btn-disconnect-teacher" class="tool-btn quiet" type="button" hidden>Disconnect</button>
       </div>
 
+      <label class="check"><input id="set-highlights" type="checkbox"> Tap words on the worksheet to hear them (purple highlight)</label>
       <label class="check"><input id="set-suggestions" type="checkbox"> Word suggestions and spell check</label>
 
       <p class="note"><a href="teacher.html" target="_blank" rel="noopener">For teachers: make QR codes</a></p>

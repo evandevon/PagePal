@@ -19,6 +19,15 @@ export function toast(message, ms = 3000) {
   }, ms);
 }
 
+/** Put away the current message straight away. */
+export function hideToast() {
+  const el = $('#toast');
+  if (!el) return;
+  clearTimeout(toastTimer);
+  el.classList.remove('show');
+  el.hidden = true;
+}
+
 /** Escape text for safe insertion into innerHTML. */
 export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
