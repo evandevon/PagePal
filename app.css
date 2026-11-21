@@ -916,5 +916,5 @@ body.mode-highcontrast .tw.speaking { background: rgba(255, 230, 0, 0.55); box-s
 .text-status.busy .spinner { display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Version, in small print above the worksheet (so testers know what they're running) */
-.viewer-version { margin: 4px 0 0; text-align: center; font-size: 11px; color: var(--muted); opacity: .8; user-select: text; }
+/* Version, in small print beside the name on the home screen (so testers know what they're running) */
+.brand-version { font-size: 12px; font-weight: 500; opacity: .75; align-self: flex-end; margin-bottom: 4px; user-select: text; }

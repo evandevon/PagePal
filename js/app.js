@@ -73,7 +73,6 @@ async function openRecord(record, { push = true } = {}) {
     if (!record.student && student) record.student = student;
     wsSession = SessionLog.fromState(record.session, { student, worksheet: record.title });
     await openWorksheet(record);
-    showVersion();
     wsSession.logEvent('open');
     resetTools();
     if (record.lastPage > 1) goToPage(record.lastPage, { smooth: false });
@@ -86,11 +85,6 @@ async function openRecord(record, { push = true } = {}) {
   } finally {
     hide();
   }
-}
-
-/** Small print above the worksheet, so testers can see which version they have. */
-function showVersion() {
-  $('#viewer-version').textContent = `PagePal v${APP_VERSION}`;
 }
 
 function backToHome() {
@@ -983,6 +977,7 @@ $('#btn-disconnect-teacher').addEventListener('click', () => {
 });
 
 $('#app-version').textContent = 'v' + APP_VERSION;
+$('#home-version').textContent = 'v' + APP_VERSION; // small print beside the name on the home screen
 $('#btn-settings').addEventListener('click', () => dialog.showModal());
 dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
 
