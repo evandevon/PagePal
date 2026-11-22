@@ -202,19 +202,53 @@ export async function warmUpOcr() {
 async function getWorker() {
   clearTimeout(idleTimer);
   if (!workerPromise) {
-    workerPromise = (async () => {
-      const { default: Tesseract } = await import(new URL('tesseract.esm.min.js', TESS).href);
-      const core = simdSupported() ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js';
-      const worker = await Tesseract.createWorker('eng', Tesseract.OEM.LSTM_ONLY, {
-        workerPath: new URL('worker.min.js', TESS).href,
-        corePath: new URL(core, TESS).href,
-        langPath: TESS.href.replace(/\/$/, ''),
-        workerBlobURL: false,
-      });
-      return worker;
-    })().catch(err => { workerPromise = null; throw err; });
+    workerPromise = startWorker().catch(err => { workerPromise = null; throw err; });
   }
   return workerPromise;
+}
+
+/**
+ * Start Tesseract. If the fast setup fails on a device, try again with the
+ * plainest one: the build without SIMD, and without Tesseract's own copy of
+ * the English data in browser storage (the offline cache still keeps it).
+ */
+async function startWorker() {
+  const { default: Tesseract } = await import(new URL('tesseract.esm.min.js', TESS).href);
+  const setups = [
+    { core: simdSupported() ? 'tesseract-core-simd-lstm.wasm.js' : 'tesseract-core-lstm.wasm.js', cacheMethod: 'write' },
+    { core: 'tesseract-core-lstm.wasm.js', cacheMethod: 'none' },
+  ];
+  let lastErr;
+  for (const setup of setups) {
+    try {
+      return await withTimeout(Tesseract.createWorker('eng', Tesseract.OEM.LSTM_ONLY, {
+        workerPath: new URL('worker.min.js', TESS).href,
+        corePath: new URL(setup.core, TESS).href,
+        langPath: TESS.href.replace(/\/$/, ''),
+        cacheMethod: setup.cacheMethod,
+        workerBlobURL: false,
+        errorHandler: err => console.warn('Text reader:', err),
+      }), 45000, 'the text reader took too long to start');
+    } catch (err) {
+      console.warn('Text reader could not start with', setup, err);
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+function withTimeout(promise, ms, what) {
+  let timer;
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(what)), ms); }),
+  ]);
+}
+
+/** A short, readable reason for an error (for the message a student or teacher sees). */
+export function errorDetail(err) {
+  const raw = err && (err.message || (typeof err === 'string' ? err : '') || (err.type ? 'event: ' + err.type : '') || String(err));
+  return String(raw || 'unknown error').replace(/\s+/g, ' ').slice(0, 140);
 }
 
 /** Free the recogniser's memory (about 100 MB) once it's been idle a while. */

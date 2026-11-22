@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.6'; // unlock speech during the tap, for iPads
+export const APP_VERSION = '0.9.7'; // text reader: backup start, and error details in the message
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

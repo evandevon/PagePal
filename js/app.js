@@ -17,7 +17,7 @@ import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
 import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, wordsInSwipe, highlightHeard, clearHeard } from './viewer.js';
-import { speakable, warmUpOcr } from './page-text.js';
+import { speakable, warmUpOcr, errorDetail } from './page-text.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
@@ -511,7 +511,7 @@ async function hearSwipe(page, points, size) {
     console.warn('Could not read that area', err);
     toast(navigator.onLine === false
       ? 'Reading words needs PagePal to have been online once. Try again with wifi.'
-      : 'Couldn’t read the words there. Try again.', 5000);
+      : `Couldn’t read the words there. Try again. (Details: ${errorDetail(err)})`, 9000);
     clearHeard();
     return;
   } finally {
