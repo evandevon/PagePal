@@ -34,6 +34,19 @@ function open() {
   return dbPromise;
 }
 
+/**
+ * Forget the open database connection, so the next read opens a fresh one.
+ * Safari keeps saved pictures in a background process; if the iPad restarts
+ * that process (for example under memory pressure), pictures read before
+ * stop working until the page reconnects. A fresh connection fixes it, as a
+ * page refresh does.
+ */
+export function reconnect() {
+  const old = dbPromise;
+  dbPromise = null;
+  if (old) old.then(db => db.close()).catch(() => {});
+}
+
 async function tx(storeName, mode, fn) {
   const db = await open();
   return new Promise((resolve, reject) => {

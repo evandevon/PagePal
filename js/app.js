@@ -57,7 +57,7 @@ let wsSession = null;
 // ── Errors from any worksheet source ──────────────────
 function explain(err) {
   console.warn(err);
-  if (err instanceof RemoteError || err instanceof UnsupportedFileError) return err.message;
+  if (err instanceof RemoteError || err instanceof UnsupportedFileError || err instanceof worksheets.PicturesUnreadableError) return err.message;
   if (err && /password/i.test(err.name + err.message)) return 'That PDF is password-protected. Save a copy without a password and try again.';
   if (err && /Invalid PDF|InvalidPDF/i.test(err.name + err.message)) return 'That PDF looks damaged. Try downloading it again.';
   return 'Something went wrong opening that worksheet. Try again, or ask your teacher for a PDF.';
@@ -67,6 +67,9 @@ function explain(err) {
 async function openRecord(record, { push = true } = {}) {
   const hide = showBusy('Opening the worksheet…');
   try {
+    // Always open a fresh copy with its pictures in memory (Safari can lose
+    // track of saved pictures in a page that's been open a while).
+    record = (await worksheets.load(record.id)) || record;
     // Each worksheet keeps the name of the student who started it, so on a
     // shared iPad Mia's sheet still says Mia when Jack has the iPad.
     const student = record.student || getSetting('studentName');
@@ -372,7 +375,7 @@ let thumbUrls = [];
 async function renderRecent() {
   const list = $('#recent-list');
   let items = [];
-  try { items = await worksheets.recent(); } catch { /* IndexedDB unavailable */ }
+  try { items = await worksheets.recentWithThumbs(); } catch { /* IndexedDB unavailable */ }
   thumbUrls.forEach(u => URL.revokeObjectURL(u));
   thumbUrls = [];
   list.innerHTML = '';

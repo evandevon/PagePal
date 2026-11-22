@@ -154,5 +154,56 @@ export async function touch(record) {
 }
 
 export const get = id => store.get('worksheets', id);
+
+/**
+ * A worksheet ready to open: its PDF or page pictures copied into the
+ * page's own memory, so they keep working even if Safari restarts its
+ * storage process while the worksheet is open (see store.reconnect). If the
+ * saved pictures can't be read, reconnect to storage and try once more.
+ */
+export async function load(id) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const record = await get(id);
+    if (!record) return null;
+    try {
+      if (record.file) record.file = await inMemory(record.file);
+      if (record.pages) for (const p of record.pages) if (p.blob) p.blob = await inMemory(p.blob);
+      return record;
+    } catch (err) {
+      if (attempt) throw new PicturesUnreadableError(err);
+      store.reconnect();
+    }
+  }
+  return null;
+}
+
+export class PicturesUnreadableError extends Error {
+  constructor(cause) {
+    super('The worksheet’s pictures couldn’t be read. Reload PagePal (pull down, or the reload button) and open it again.');
+    this.cause = cause;
+  }
+}
+
+async function inMemory(blob) {
+  return new Blob([await blob.arrayBuffer()], { type: blob.type });
+}
+
+/** Small thumbnails for the worksheet list, in memory, reconnecting once if Safari has lost track of them. */
+export async function recentWithThumbs() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const items = await recent();
+    try {
+      for (const w of items) if (w.thumb) w.thumb = await inMemory(w.thumb);
+      return items;
+    } catch {
+      if (attempt) {
+        for (const w of items) w.thumb = null; // show the list without pictures
+        return items;
+      }
+      store.reconnect();
+    }
+  }
+  return [];
+}
 export const remove = id => store.remove('worksheets', id);
 export const recent = () => store.recentWorksheets(20);
