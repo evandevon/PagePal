@@ -119,6 +119,7 @@ Every send carries the **student's name** and the **worksheet name**. Both are e
 | Where | Organised as |
 |---|---|
 | Teacher's Drive (Send to teacher) | `PagePal submissions › 3/4K › Fractions page 12 › Mia S – Fractions page 12 – 2026-11-21 1430.pdf` (class, then worksheet; files sort by student; sending again adds a new, later file) |
+| Word Helper work (same class QR code, inbox script v4) | Its own spreadsheet, **Word Helper submissions**, made by the script inside `Word Helper submissions` in the teacher's Drive; PDFs (if sent) in `Word Helper submissions › 3/4K › Mia S – Word Helper – 2026-11-21 1430.pdf` |
 | Teacher's sheet | One row per send: student, worksheet, class, stats, answers, PDF link. Filter or sort by the Worksheet column. |
 | Save to Files / share | `Mia-S_Fractions-page-12_2026-11-21_1430.csv` plus `…_p1.jpg`, `…_p2.jpg` (one name per sitting, so the CSV and its pictures stay paired) |
 

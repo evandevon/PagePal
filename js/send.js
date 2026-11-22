@@ -124,7 +124,7 @@ async function postJson(url, body) {
 }
 
 export function postToInbox(teacher, payload) {
-  return postJson(teacher.url, { action: 'submit', ...payload, secret: teacher.secret });
+  return postJson(teacher.url, { action: 'submit', tool: 'pagepal', ...payload, secret: teacher.secret });
 }
 
 /** Swap a class QR code's join code for the sending key. */

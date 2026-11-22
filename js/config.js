@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.11.0'; // a worksheet tool: practice helpers and suggestions taken out
+export const APP_VERSION = '0.11.1'; // sends say which tool they came from (inbox v4 keeps Word Helper separate)
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

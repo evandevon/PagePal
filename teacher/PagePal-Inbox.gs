@@ -1,8 +1,13 @@
 /**
- * PagePal Inbox (version 3)
- * Receives work that students send from PagePal and files it in this
- * Google Sheet. PDFs of the work go in your Google Drive, in
- * PagePal submissions › Class › Worksheet › "Student – Worksheet – date time.pdf".
+ * PagePal Inbox (version 4)
+ * Receives work that students send from PagePal and Word Helper. Each tool
+ * keeps its own spreadsheet and its own folder in your Google Drive:
+ *   PagePal     → this Google Sheet; PDFs in
+ *                 PagePal submissions › Class › Worksheet › "Student – Worksheet – date time.pdf"
+ *   Word Helper → a "Word Helper submissions" spreadsheet that this script makes
+ *                 inside a Word Helper submissions folder; PDFs in
+ *                 Word Helper submissions › Class › "Student – Word Helper – date time.pdf"
+ * One class QR code works for both tools.
  *
  * Set-up (see the teacher guide):
  *   1. Paste this whole file into Extensions › Apps Script › Code.gs.
@@ -22,9 +27,11 @@
  *   - The sheet holds no formulas at all: students' text is stored as text
  *     and the page links are plain links.
  *   - Nothing can be read back through the web address.
+ *   - The script can only open this sheet and files it made itself (such as
+ *     the Word Helper spreadsheet), never your other files.
  */
 
-const VERSION = 3;
+const VERSION = 4;
 const SHEET_NAME = 'Submissions';
 const FOLDER_NAME = 'PagePal submissions';
 const HEADERS = [
@@ -33,6 +40,18 @@ const HEADERS = [
   'Typed', 'Spoken', 'Suggestions', 'Spell corrections', 'Assistance %',
   'Times listened', 'Words listened to', 'Answer', 'Page', 'PDF', 'Notes',
 ];
+const WH_HEADERS = [
+  'Received', 'Student', 'Class',
+  'Time working (min)', 'Total time (min)', 'Words written',
+  'Typed', 'Spoken', 'Suggestions', 'Spell corrections', 'Assistance %',
+  'Times listened', 'Words listened to', 'Words defined', 'Writing', 'PDF', 'Notes',
+];
+// Each tool's Drive folder, and the script properties that remember it.
+const TOOLS = {
+  pagepal: { folder: FOLDER_NAME, folderProp: 'FOLDER_ID', subsProp: 'SUBFOLDERS' },
+  'word-helper': { folder: 'Word Helper submissions', folderProp: 'WH_FOLDER_ID', subsProp: 'WH_SUBFOLDERS',
+    sheetName: 'Word Helper submissions', sheetProp: 'WH_SHEET_ID', tabProp: 'WH_SHEET_TAB' },
+};
 const MAX_FILE_BYTES = 5 * 1024 * 1024;   // a page picture is usually 0.2–0.5 MB
 const MAX_BODY_CHARS = 16 * 1024 * 1024;  // whole request, as text
 const MAX_PER_MINUTE = 60;                // a class of 30 sending at once is fine
@@ -53,13 +72,15 @@ function setup() {
   if (!props.getProperty('KEY')) props.setProperty('KEY', newCode_(24));
   getSheet_();
   try {
-    getFolderId_();
+    getFolderId_('pagepal');
+    withLock_(wordHelperSheet_); // makes the Word Helper folder and spreadsheet
   } catch (err) {
     Logger.log('Set-up could not reach Google Drive: ' + err.message +
       '\nCheck that appsscript.json was replaced as the guide shows, then run setup again.');
     throw err;
   }
-  Logger.log('Set-up done. Your secret code is: ' + props.getProperty('KEY') +
+  Logger.log('Set-up done. Word Helper work goes to: https://docs.google.com/spreadsheets/d/' +
+    props.getProperty('WH_SHEET_ID') + '\nYour secret code is: ' + props.getProperty('KEY') +
     '\nPaste it into the PagePal teacher page to make your class QR code. Keep it private.');
 }
 
@@ -76,7 +97,7 @@ function resetCode() {
 
 /** Visiting the address in a browser: a quick "is it working?" check. Reveals nothing. */
 function doGet() {
-  return json_({ ok: true, app: 'PagePal Inbox', version: VERSION });
+  return json_({ ok: true, app: 'PagePal Inbox', version: VERSION, tools: Object.keys(TOOLS) });
 }
 
 function doPost(e) {
@@ -144,6 +165,9 @@ function submit_(data) {
   if (!sameCode_(data.secret, PropertiesService.getScriptProperties().getProperty('KEY'))) {
     return { ok: false, error: 'wrong-code' };
   }
+  const tool = data.tool === undefined ? 'pagepal' : String(data.tool);
+  if (tool === 'word-helper') return wordHelperSubmit_(data);
+  if (tool !== 'pagepal') return { ok: false, error: 'bad-request' };
   const st = data.stats || {};
   const student = text_(data.student, 80) || 'Unknown';
   const worksheet = text_(data.worksheet, 100) || 'Worksheet';
@@ -156,7 +180,7 @@ function submit_(data) {
   let pageUrl = '', pdfUrl = '';
   if (data.image || data.pdf) {
     const className = safeName_(text_(data.className, 80)) || 'My class';
-    const folderId = withLock_(function () { return subFolderId_([className, safeName_(worksheet)]); });
+    const folderId = withLock_(function () { return subFolderId_('pagepal', [className, safeName_(worksheet)]); });
     const fileName = [label, worksheet, stamp].map(safeName_).join(' – ');
     pageUrl = saveFile_(folderId, data.image, fileName, notes);
     pdfUrl = saveFile_(folderId, data.pdf, fileName, notes);
@@ -182,6 +206,36 @@ function submit_(data) {
 }
 
 /**
+ * Word Helper writing → the Word Helper spreadsheet. A PDF, if sent, goes in
+ * Word Helper submissions › Class › "Student – Word Helper – date time.pdf".
+ */
+function wordHelperSubmit_(data) {
+  const st = data.stats || {};
+  const student = text_(data.student, 80) || 'Unknown';
+  const label = (data.test ? 'TEST ' : '') + student;
+  const className = text_(data.className, 80);
+  const tz = Session.getScriptTimeZone();
+  const notes = [];
+  let pdfUrl = '';
+  if (data.pdf) {
+    const folderId = withLock_(function () { return subFolderId_('word-helper', [safeName_(className) || 'My class']); });
+    const stamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HHmm');
+    pdfUrl = saveFile_(folderId, data.pdf, [label, 'Word Helper', stamp].map(safeName_).join(' – '), notes);
+  }
+  const words = function (list) { return text_((Array.isArray(list) ? list : []).join(', '), 2000); };
+  const row = [
+    Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm'), label, className,
+    mins_(st.workingSecs), mins_(st.totalSecs), num_(st.wordsWritten),
+    num_(st.typed), num_(st.dictated), num_(st.suggestion), num_(st.corrected), num_(st.assistanceRate),
+    num_(st.listens), words(st.wordsListened), words(st.wordsDefined),
+    text_(data.answer, 40000), { link: pdfUrl, label: 'View PDF' }, notes.join(' '),
+  ];
+  const target = withLock_(wordHelperSheet_);
+  appendCells_(target, [row]);
+  return { ok: true, warnings: notes };
+}
+
+/**
  * file = {type: 'image/jpeg', base64: '...'}. Saved only if its contents
  * really are that type and it's small enough. Returns a Drive link or ''.
  */
@@ -203,11 +257,13 @@ function startsWith_(bytes, sig) {
   return true;
 }
 
-// ── Google Drive, limited to files this script creates ───
-// (Apps Script's built-in DriveApp always asks for your whole Drive, so the
-//  Drive API is used directly with the narrower "drive.file" permission.)
+// ── Google Drive and Sheets, limited to files this script creates ───
+// (Apps Script's built-in DriveApp and SpreadsheetApp.openById ask for your
+//  whole Drive or every spreadsheet, so the Drive and Sheets APIs are used
+//  directly with the narrower "drive.file" permission.)
 
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
+const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 
 function driveCall_(method, url, payload, contentType) {
   const res = UrlFetchApp.fetch(url, {
@@ -218,7 +274,7 @@ function driveCall_(method, url, payload, contentType) {
     muteHttpExceptions: true,
   });
   const code = res.getResponseCode();
-  if (code >= 300) throw new Error('Drive error ' + code + ': ' + res.getContentText().slice(0, 200));
+  if (code >= 300) throw new Error('Google error ' + code + ': ' + res.getContentText().slice(0, 200));
   return JSON.parse(res.getContentText());
 }
 
@@ -228,7 +284,7 @@ function createFolder_(name, parentId) {
   return driveCall_('post', DRIVE + '?fields=id', JSON.stringify(meta), 'application/json').id;
 }
 
-function folderExists_(id) {
+function fileExists_(id) {
   const cache = CacheService.getScriptCache();
   if (cache.get('folder-' + id)) return true; // checked in the last 10 minutes
   try {
@@ -241,13 +297,15 @@ function folderExists_(id) {
   }
 }
 
-function getFolderId_() {
+/** A tool's top folder in Drive, made if it's missing or was deleted. */
+function getFolderId_(tool) {
+  const t = TOOLS[tool];
   const props = PropertiesService.getScriptProperties();
-  const id = props.getProperty('FOLDER_ID');
-  if (id && folderExists_(id)) return id;
-  const created = createFolder_(FOLDER_NAME);
-  props.setProperty('FOLDER_ID', created);
-  props.deleteProperty('SUBFOLDERS');
+  const id = props.getProperty(t.folderProp);
+  if (id && fileExists_(id)) return id;
+  const created = createFolder_(t.folder);
+  props.setProperty(t.folderProp, created);
+  props.deleteProperty(t.subsProp);
   return created;
 }
 
@@ -255,18 +313,67 @@ function getFolderId_() {
  * Nested sub-folders, e.g. ['3/4K', 'Fractions page 12'], each made once and
  * remembered by its path. Names that differ only in capitals share a folder.
  */
-function subFolderId_(names) {
+function subFolderId_(tool, names) {
   const props = PropertiesService.getScriptProperties();
+  const subsProp = TOOLS[tool].subsProp;
   let map = {};
-  try { map = JSON.parse(props.getProperty('SUBFOLDERS') || '{}'); } catch (err) { map = {}; }
-  let parent = getFolderId_(), path = '', changed = false;
+  try { map = JSON.parse(props.getProperty(subsProp) || '{}'); } catch (err) { map = {}; }
+  let parent = getFolderId_(tool), path = '', changed = false;
   names.forEach(function (name) {
     path += '/' + name.toLowerCase();
-    if (!(map[path] && folderExists_(map[path]))) { map[path] = createFolder_(name, parent); changed = true; }
+    if (!(map[path] && fileExists_(map[path]))) { map[path] = createFolder_(name, parent); changed = true; }
     parent = map[path];
   });
-  if (changed) props.setProperty('SUBFOLDERS', JSON.stringify(map));
+  if (changed) props.setProperty(subsProp, JSON.stringify(map));
   return parent;
+}
+
+/**
+ * The Word Helper spreadsheet: {id, tab}. Made by this script inside the
+ * Word Helper folder (so "drive.file" covers it), and made again if deleted.
+ */
+function wordHelperSheet_() {
+  const t = TOOLS['word-helper'];
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty(t.sheetProp);
+  if (id && fileExists_(id)) return { id: id, tab: Number(props.getProperty(t.tabProp)) || 0 };
+  const meta = { name: t.sheetName, mimeType: 'application/vnd.google-apps.spreadsheet', parents: [getFolderId_('word-helper')] };
+  const created = driveCall_('post', DRIVE + '?fields=id', JSON.stringify(meta), 'application/json').id;
+  const info = driveCall_('get', SHEETS + '/' + encodeURIComponent(created) + '?fields=sheets.properties.sheetId');
+  const tab = info.sheets[0].properties.sheetId;
+  driveCall_('post', SHEETS + '/' + encodeURIComponent(created) + ':batchUpdate', JSON.stringify({ requests: [
+    { updateSheetProperties: { properties: { sheetId: tab, title: 'Submissions', gridProperties: { frozenRowCount: 1 } },
+      fields: 'title,gridProperties.frozenRowCount' } },
+  ] }), 'application/json');
+  appendCells_({ id: created, tab: tab }, [WH_HEADERS], true);
+  props.setProperty(t.sheetProp, created);
+  props.setProperty(t.tabProp, String(tab));
+  return { id: created, tab: tab };
+}
+
+/**
+ * Add rows to a sheet through the Sheets API. Text goes in as plain text
+ * (never a formula, whatever it starts with); {link, label} becomes a plain
+ * link, only to Drive files this script made.
+ */
+function appendCells_(target, rows, bold) {
+  const cellOf = function (v) {
+    if (v && typeof v === 'object') {
+      if (!/^https:\/\/drive\.google\.com\/[\w\/?=&.-]+$/.test(v.link || '')) return {};
+      return { userEnteredValue: { stringValue: v.label }, textFormatRuns: [{ startIndex: 0, format: { link: { uri: v.link } } }] };
+    }
+    if (typeof v === 'number') return { userEnteredValue: { numberValue: v } };
+    if (v === '' || v === null || v === undefined) return {};
+    const c = { userEnteredValue: { stringValue: String(v) } };
+    if (bold) c.userEnteredFormat = { textFormat: { bold: true } };
+    return c;
+  };
+  const body = { requests: [{ appendCells: {
+    sheetId: target.tab,
+    rows: rows.map(function (r) { return { values: r.map(cellOf) }; }),
+    fields: '*',
+  } }] };
+  driveCall_('post', SHEETS + '/' + encodeURIComponent(target.id) + ':batchUpdate', JSON.stringify(body), 'application/json');
 }
 
 /** A name that's safe and tidy as a Drive file or folder name. */

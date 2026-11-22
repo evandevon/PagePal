@@ -211,7 +211,9 @@ $('#in-make').addEventListener('click', async () => {
       : result.error === 'busy' ? 'Your sheet is busy. Wait a minute and try again.' : 'Couldn’t make the code. Check:' + CHECKLIST);
     return;
   }
-  setStatus(status, 'ok', 'Connected to your sheet. Print or show the QR code below.');
+  setStatus(status, 'ok', 'Connected to your sheet. Print or show the QR code below.' + (version < 4
+    ? ' <br>This QR code works for PagePal now. To also take work from Word Helper (it gets its own spreadsheet), update the script to version 4: paste in the new <code>PagePal-Inbox.gs</code>, run <code>setup</code>, then <strong>Deploy › Manage deployments › Edit › New version</strong>.'
+    : ''));
   const url = teacherLink(APP_BASE, { name: teacher.name, url: teacher.url, join: result.join, expires: result.expires });
   inQr = { qr: makeQr(url), label: teacher.name, expires: result.expires };
   const until = new Date(result.expires).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
