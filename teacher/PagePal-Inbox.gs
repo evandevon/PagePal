@@ -14,8 +14,10 @@
  *   2. Project Settings › tick "Show appsscript.json manifest file in editor",
  *      then replace appsscript.json with the one in the guide. That limits the
  *      script to this sheet and to files it creates itself in your Drive.
- *   3. Run setup() once and allow access.
- *   4. Deploy › New deployment › Web app — Execute as: Me, Who has access: Anyone.
+ *   3. Click the + next to "Services" (left-hand side), choose "Google Sheets API",
+ *      click Add. (Lets the script fill in the Word Helper spreadsheet it makes.)
+ *   4. Run setup() once and allow access.
+ *   5. Deploy › New deployment › Web app — Execute as: Me, Who has access: Anyone.
  *
  * Security, in brief:
  *   - Class QR codes carry a short-lived JOIN code, not the sending key.
@@ -75,8 +77,14 @@ function setup() {
     getFolderId_('pagepal');
     withLock_(wordHelperSheet_); // makes the Word Helper folder and spreadsheet
   } catch (err) {
-    Logger.log('Set-up could not reach Google Drive: ' + err.message +
-      '\nCheck that appsscript.json was replaced as the guide shows, then run setup again.');
+    if (/Sheets API/.test(err.message)) {
+      Logger.log('One more switch to turn on: in the Apps Script editor, click the + next to "Services" ' +
+        '(left-hand side), choose "Google Sheets API", click Add, then run setup again. ' +
+        '(It lets this script fill in the Word Helper spreadsheet it makes; it still can\'t open your other files.)');
+    } else {
+      Logger.log('Set-up could not reach Google Drive: ' + err.message +
+        '\nCheck that appsscript.json was replaced as the guide shows, then run setup again.');
+    }
     throw err;
   }
   Logger.log('Set-up done. Word Helper work goes to: https://docs.google.com/spreadsheets/d/' +
@@ -335,10 +343,17 @@ function subFolderId_(tool, names) {
 function wordHelperSheet_() {
   const t = TOOLS['word-helper'];
   const props = PropertiesService.getScriptProperties();
-  const id = props.getProperty(t.sheetProp);
-  if (id && fileExists_(id)) return { id: id, tab: Number(props.getProperty(t.tabProp)) || 0 };
-  const meta = { name: t.sheetName, mimeType: 'application/vnd.google-apps.spreadsheet', parents: [getFolderId_('word-helper')] };
-  const created = driveCall_('post', DRIVE + '?fields=id', JSON.stringify(meta), 'application/json').id;
+  let created = props.getProperty(t.sheetProp);
+  if (created && fileExists_(created)) {
+    const ready = props.getProperty(t.tabProp);
+    if (ready !== null) return { id: created, tab: Number(ready) };
+    // made on an earlier run that stopped part-way: finish preparing it below
+  } else {
+    const meta = { name: t.sheetName, mimeType: 'application/vnd.google-apps.spreadsheet', parents: [getFolderId_('word-helper')] };
+    created = driveCall_('post', DRIVE + '?fields=id', JSON.stringify(meta), 'application/json').id;
+    props.setProperty(t.sheetProp, created);
+    props.deleteProperty(t.tabProp);
+  }
   const info = driveCall_('get', SHEETS + '/' + encodeURIComponent(created) + '?fields=sheets.properties.sheetId');
   const tab = info.sheets[0].properties.sheetId;
   driveCall_('post', SHEETS + '/' + encodeURIComponent(created) + ':batchUpdate', JSON.stringify({ requests: [
@@ -346,8 +361,7 @@ function wordHelperSheet_() {
       fields: 'title,gridProperties.frozenRowCount' } },
   ] }), 'application/json');
   appendCells_({ id: created, tab: tab }, [WH_HEADERS], true);
-  props.setProperty(t.sheetProp, created);
-  props.setProperty(t.tabProp, String(tab));
+  props.setProperty(t.tabProp, String(tab)); // marks it ready
   return { id: created, tab: tab };
 }
 
