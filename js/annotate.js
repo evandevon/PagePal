@@ -12,10 +12,16 @@
 
 export const COLORS = ['#1F3A93', '#111111', '#C0392B', '#1E8449']; // navy, black, red, green
 export const COLOR_NAMES = ['Blue', 'Black', 'Red', 'Green'];
-const DEFAULT_SIZE = 0.024;      // about 14 pt on an A4 page
+const DEFAULT_SIZE = 0.024;      // about 14 pt on an A4 page (the middle text size)
+// Three sizes for each kind of thing: small, medium, large. The size last
+// tapped for a kind of thing becomes the size new ones start at.
+export const SIZE_LEVELS = {
+  text: [0.018, 0.024, 0.034],   // about 10, 14 and 19 pt on A4
+  stamp: [0.035, 0.05, 0.07],
+  ink: [0.0025, 0.004, 0.007],
+};
+export const DEFAULT_LEVELS = { text: 0, stamp: 1, ink: 1 };
 const DEFAULT_WIDTH = 0.42;
-const STAMP_SIZE = 0.05;
-const INK_SIZE = 0.004;          // pen line width, fraction of page width
 export const HEAR_SIZE = 0.035;  // highlighter (Hear) width: about one line of print
 const LONG_PRESS_MS = 500;
 const MIN_SIZE = 0.012, MAX_SIZE = 0.08;
@@ -127,6 +133,7 @@ export class Annotator {
     this.cb = callbacks;
     this.tool = 'text';
     this.color = COLORS[0];
+    this.levels = { ...DEFAULT_LEVELS, ...(callbacks.sizeLevels || {}) };
     this.selectedId = null;
     this.undoStack = [];
     this.redoStack = [];
@@ -222,6 +229,41 @@ export class Annotator {
     }
   }
 
+  /** Size group of an item: 'text', 'stamp' (ticks, crosses, circles) or 'ink'. */
+  static kind(it) {
+    return it.type === 'text' ? 'text' : it.type === 'ink' ? 'ink' : 'stamp';
+  }
+
+  /** The size new items of a kind start at. */
+  sizeFor(kind) {
+    return SIZE_LEVELS[kind][this.levels[kind]];
+  }
+
+  /** Which of the three sizes (0, 1, 2) an item is closest to. */
+  levelOf(it) {
+    const sizes = SIZE_LEVELS[Annotator.kind(it)];
+    let best = 0;
+    sizes.forEach((v, i) => { if (Math.abs(Math.log(it.size / v)) < Math.abs(Math.log(it.size / sizes[best]))) best = i; });
+    return best;
+  }
+
+  /**
+   * Small, medium or large (0, 1, 2) for the selected item. That size also
+   * becomes the starting size for new items of its kind.
+   */
+  setLevel(level) {
+    const it = this.selected;
+    if (!it) return;
+    const kind = Annotator.kind(it);
+    this.levels[kind] = level;
+    this.cb.onSizeLevel && this.cb.onSizeLevel(kind, level);
+    if (it.size === SIZE_LEVELS[kind][level]) return;
+    this._remember();
+    it.size = SIZE_LEVELS[kind][level];
+    this._applyStyle(it);
+    this._changed();
+  }
+
   /** Make the selected item's text (or stamp) bigger (+1) or smaller (−1). */
   resize(step) {
     const it = this.selected;
@@ -267,10 +309,10 @@ export class Annotator {
   placeAt(tool, pageIndex, fx, fy, { text = '', focus = true } = {}) {
     const r = this.layers[pageIndex].getBoundingClientRect();
     if (tool === 'text') {
-      const lineH = (DEFAULT_SIZE * 1.35 * r.width) / r.height;
+      const lineH = (this.sizeFor('text') * 1.35 * r.width) / r.height;
       return this.addText(pageIndex, fx, fy - lineH * 0.6, text, { focus });
     }
-    const s = STAMP_SIZE * 1.6;
+    const s = this.sizeFor('stamp') * 1.6;
     return this.addStamp(pageIndex, tool, fx - s / 2, fy - (s * r.width / r.height) / 2);
   }
 
@@ -314,7 +356,7 @@ export class Annotator {
     this.layers[pageIndex].setPointerCapture(e.pointerId);
     const { fx, fy } = this._pointInPage(e, pageIndex);
     const hear = this.tool === 'hear';
-    const it = { id: newId(), page: pageIndex, type: 'ink', points: [[fx, fy]], size: hear ? HEAR_SIZE : INK_SIZE, color: hear ? 'rgb(124, 77, 255)' : this.color };
+    const it = { id: newId(), page: pageIndex, type: 'ink', points: [[fx, fy]], size: hear ? HEAR_SIZE : this.sizeFor('ink'), color: hear ? 'rgb(124, 77, 255)' : this.color };
     const svg = this._inkSvg(it);
     if (hear) svg.classList.add('annot-hear');
     this.layers[pageIndex].appendChild(svg);
@@ -370,7 +412,7 @@ export class Annotator {
     const it = {
       id: newId(), page, type: 'text',
       x: clamp(x, 0, 0.9), y: clamp(y, 0, 0.97), w: Math.max(0.12, w),
-      size: this._lastTextSize || DEFAULT_SIZE, color: this.color, text,
+      size: this.sizeFor('text'), color: this.color, text,
     };
     this.items.push(it);
     this._render(it);
@@ -383,7 +425,7 @@ export class Annotator {
   addStamp(page, type, x, y) {
     this._dropEmptySelected();
     this._remember();
-    const it = { id: newId(), page, type, x: clamp(x, 0, 0.95), y: clamp(y, 0, 0.97), size: STAMP_SIZE, color: this.color };
+    const it = { id: newId(), page, type, x: clamp(x, 0, 0.95), y: clamp(y, 0, 0.97), size: this.sizeFor('stamp'), color: this.color };
     this.items.push(it);
     this._render(it);
     this.select(it.id);
@@ -504,7 +546,6 @@ export class Annotator {
     const el = id && this._el(id);
     if (el) el.classList.add('selected');
     const it = this.selected;
-    if (it && it.type === 'text') this._lastTextSize = it.size;
     this.cb.onSelect && this.cb.onSelect(it);
   }
 

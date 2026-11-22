@@ -361,10 +361,14 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
 .tool.active { background: var(--brand); color: #fff; }
 .tool:disabled { opacity: 0.3; cursor: default; }
 .glyph { font-family: Georgia, serif; font-weight: 700; line-height: 1; }
-.small-a { font-size: 15px; }
-.big-a { font-size: 24px; }
+svg .icon-fill { fill: currentColor; }  /* solid parts of line icons (the marker's tip) */
+.size-group { display: flex; gap: 2px; }
+.size-btn { min-width: 40px; padding-inline: 6px; }
+.size-a0 { font-size: 13px; }
+.size-a1 { font-size: 18px; }
+.size-a2 { font-size: 24px; }
+.size-btn.active { background: var(--brand-soft, #e3efe9); color: var(--brand); box-shadow: inset 0 0 0 2px var(--brand); }
 .swatch { width: 24px; height: 24px; border-radius: 50%; background: var(--swatch, #1F3A93); border: 2px solid var(--card); box-shadow: 0 0 0 1.5px var(--line); }
-.tool-mic { min-height: var(--tap); font-size: 16px; padding: 6px 16px; }
 .viewer-mic-preview { flex: 1 1 140px; min-width: 0; color: var(--muted); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .annot-layer { position: absolute; inset: 0; z-index: 2; cursor: text; }
@@ -380,8 +384,15 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
   min-height: 0;       /* undo the general text-box sizing */
 }
 .annot-input:focus-visible { outline: none; }
+/* A faint dashed edge on every answer box, so its size is clear (on screen
+   only: the sent PDF shows just the writing). Solid when selected. */
+.annot-text .annot-input { box-shadow: 0 0 0 1px rgba(31, 58, 147, 0.22); }
+@supports (outline-style: dashed) {
+  .annot-text .annot-input { box-shadow: none; outline: 1px dashed rgba(31, 58, 147, 0.32); outline-offset: 0; }
+}
+body.mode-highcontrast .annot-text .annot-input, body.mode-darkblue .annot-text .annot-input { outline-color: rgba(255, 255, 255, 0.5); }
 .annot-text:hover .annot-input { background: rgba(31, 58, 147, 0.05); }
-.annot.selected .annot-input { background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 2px var(--brand); }
+.annot.selected .annot-input { background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 2px var(--brand); outline: none; }
 .annot-grip, .annot-width { position: absolute; opacity: 0; pointer-events: none; }
 .annot.selected .annot-grip, .annot.selected .annot-width { opacity: 1; pointer-events: auto; }
 .annot-grip {
@@ -482,8 +493,6 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
   .viewer-title { flex: 1 1 140px; min-width: 110px; }
   .viewer-bar > :not(.viewer-title) { flex-shrink: 0; }
   .viewer-tools .tool span:not(.glyph):not(.swatch) { display: none; }
-  .tool-mic span { display: none; }
-  .tool-mic.listening span { display: inline; }
   .viewer-tools .tool-group { padding: 0; background: transparent; }
 }
 
@@ -501,9 +510,6 @@ label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
   .viewer-tools .tool { min-width: 44px; min-height: 44px; padding: 2px; }
   .viewer-tools .tool span:not(.glyph):not(.swatch) { display: none; }
   .add-btn { padding: 6px 12px; min-height: 44px; }
-  .tool-mic { padding: 6px 14px; min-height: 44px; font-size: 15px; }
-  .tool-mic span { display: none; }
-  .tool-mic.listening span { display: inline; }
   .viewer[data-selected] .when-idle-compact { display: none; }
   .viewer-mic-preview {
     position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 25;

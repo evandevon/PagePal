@@ -185,18 +185,17 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span>Add</span>
       </button>
-      <button id="tool-mic" class="mic-btn tool-mic" type="button" aria-label="Hold to talk into the selected answer" aria-pressed="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-        <span>Hold to talk</span>
-      </button>
       <div class="tool-group">
         <button id="tool-hear" class="tool" type="button" title="Hear: swipe over words on the worksheet, or select an answer to hear it" aria-label="Hear">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span>Hear</span>
         </button>
       </div>
       <div class="tool-group when-selected">
-        <button id="tool-smaller" class="tool" type="button" title="Smaller" aria-label="Smaller"><span class="glyph small-a">A</span></button>
-        <button id="tool-bigger" class="tool" type="button" title="Bigger" aria-label="Bigger"><span class="glyph big-a">A</span></button>
+        <div class="size-group" role="group" aria-label="Size">
+          <button id="tool-size-0" class="tool size-btn" type="button" title="Small" aria-label="Small"><span class="glyph size-a0">A</span></button>
+          <button id="tool-size-1" class="tool size-btn" type="button" title="Medium" aria-label="Medium"><span class="glyph size-a1">A</span></button>
+          <button id="tool-size-2" class="tool size-btn" type="button" title="Large" aria-label="Large"><span class="glyph size-a2">A</span></button>
+        </div>
         <button id="tool-color" class="tool" type="button" title="Colour" aria-label="Colour: Blue"><span class="swatch"></span></button>
         <button id="tool-delete" class="tool" type="button" title="Delete" aria-label="Delete">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
@@ -227,8 +226,7 @@
     <button type="button" role="menuitem" data-add="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6"/></svg>Tick</button>
     <button type="button" role="menuitem" data-add="cross"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>Cross</button>
     <button type="button" role="menuitem" data-add="circle"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="8"/></svg>Circle</button>
-    <button type="button" role="menuitem" data-add="hear"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>Hear</button>
-    <button type="button" role="menuitem" data-add="draw"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21c3-1 4-3 5-5l9-9a2.1 2.1 0 0 0-3-3l-9 9c-2 1-4 2-5 5"/><path d="M14 4l3 3"/></svg>Draw</button>
+    <button type="button" role="menuitem" data-add="draw"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="1.5" width="7" height="14" rx="1.6" transform="rotate(45 12.5 8.5)"/><path d="M12.6 3.7l4.7 4.7"/><path class="icon-fill" d="M5.4 11.3l4.3 4.3-4.2 2.6-2.7-2.7z"/><path d="M3.5 21.3c2.3-1.6 4.6 1.6 6.9 0s4.6 1.6 6.9 0"/></svg>Draw</button>
   </div>
 
   <div id="hear-bar" class="draw-bar hear-bar" role="toolbar" aria-label="Hear words" hidden>
@@ -239,7 +237,7 @@
   </div>
 
   <div id="draw-bar" class="draw-bar" role="toolbar" aria-label="Drawing" hidden>
-    <span class="draw-bar-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21c3-1 4-3 5-5l9-9a2.1 2.1 0 0 0-3-3l-9 9c-2 1-4 2-5 5"/><path d="M14 4l3 3"/></svg>Drawing</span>
+    <span class="draw-bar-label"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="1.5" width="7" height="14" rx="1.6" transform="rotate(45 12.5 8.5)"/><path d="M12.6 3.7l4.7 4.7"/><path class="icon-fill" d="M5.4 11.3l4.3 4.3-4.2 2.6-2.7-2.7z"/><path d="M3.5 21.3c2.3-1.6 4.6 1.6 6.9 0s4.6 1.6 6.9 0"/></svg>Drawing</span>
     <button id="draw-undo" class="draw-bar-btn" type="button" aria-label="Undo">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
     </button>

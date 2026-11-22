@@ -432,6 +432,12 @@ initViewer({
     onSelect: () => updateTools(),
     onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
     onLongPress: spot => showPageMenu(spot),
+    // The size last tapped for text, stamps or drawing is where new ones start.
+    get sizeLevels() { return getSetting('sizeLevels'); },
+    onSizeLevel: (kind, level) => {
+      setSetting('sizeLevels', { ...getSetting('sizeLevels'), [kind]: level });
+      updateTools();
+    },
     onBlankTap: () => {
       // A gentle reminder, not every time.
       if (Date.now() - lastBlankHint < 8000) return;
@@ -630,7 +636,14 @@ function updateTools() {
   const sel = annot && annot.selected;
   // Phones show size/colour/delete only while something is selected.
   if (sel) $('#viewer').dataset.selected = ''; else delete $('#viewer').dataset.selected;
-  $('#tool-smaller').disabled = $('#tool-bigger').disabled = $('#tool-delete').disabled = !sel;
+  $('#tool-delete').disabled = !sel;
+  const level = sel && annot ? annot.levelOf(sel) : -1;
+  [0, 1, 2].forEach(i => {
+    const b = $('#tool-size-' + i);
+    b.disabled = !sel;
+    b.classList.toggle('active', i === level);
+    b.setAttribute('aria-pressed', i === level ? 'true' : 'false');
+  });
   $('#tool-undo').disabled = !(annot && annot.canUndo());
   $('#tool-redo').disabled = !(annot && annot.canRedo());
   $('#tool-hear').disabled = !annot;
@@ -645,8 +658,7 @@ $('#tool-color').addEventListener('click', () => {
   showColor();
   if (currentAnnotator()) currentAnnotator().setColor(COLORS[colorIndex]);
 });
-$('#tool-smaller').addEventListener('click', () => currentAnnotator() && currentAnnotator().resize(-1));
-$('#tool-bigger').addEventListener('click', () => currentAnnotator() && currentAnnotator().resize(1));
+[0, 1, 2].forEach(i => $('#tool-size-' + i).addEventListener('click', () => currentAnnotator() && currentAnnotator().setLevel(i)));
 $('#tool-delete').addEventListener('click', () => currentAnnotator() && currentAnnotator().deleteSelected());
 $('#tool-done').addEventListener('click', () => {
   const annot = currentAnnotator();
@@ -658,7 +670,7 @@ $('#tool-undo').addEventListener('click', () => currentAnnotator() && currentAnn
 $('#tool-redo').addEventListener('click', () => currentAnnotator() && currentAnnotator().redo());
 // Keep the keyboard open: tapping a tool shouldn't take focus from the answer box.
 document.querySelectorAll('.viewer-tools button').forEach(b => {
-  if (b.id !== 'tool-mic') b.addEventListener('pointerdown', e => e.preventDefault());
+  b.addEventListener('pointerdown', e => e.preventDefault());
 });
 
 // Hear: with an answer box selected, read that answer; otherwise switch to
@@ -678,19 +690,17 @@ $('#tool-hear').addEventListener('click', () => {
   startHearing();
 });
 
-// Hold to talk: words go into the selected answer box (or a new one).
+// Talk (from the press-and-hold menu): words go into the answer box made
+// for them (or the selected one, or a new one).
 let viewerDictation = null;
-const viewerMic = $('#tool-mic');
 if (dictationStatus() !== 'ok') {
-  viewerMic.hidden = true;
+  // No speech recognition in this browser: don't offer Talk.
+  $('#page-menu [data-add="talk"]').hidden = true;
 } else {
   viewerDictation = new Dictation({
     onPreview: text => { $('#viewer-mic-preview').textContent = text || ''; },
     onState: on => {
-      viewerMic.classList.toggle('listening', on);
-      viewerMic.setAttribute('aria-pressed', String(on));
-      viewerMic.querySelector('span').textContent = on ? (talkToggle ? 'Listening…' : 'Listening… let go') : 'Hold to talk';
-      $('#talk-stop').hidden = !(on && talkToggle);
+      $('#talk-stop').hidden = !on;
       if (!on) talkToggle = false;
       if (on) { tts.stop(); if (wsSession) wsSession.logEvent('dictation_start'); }
     },
@@ -707,11 +717,10 @@ if (dictationStatus() !== 'ok') {
     },
     onEmpty: () => {
       if (wsSession) wsSession.logEvent('dictation_retry');
-      toast('I didn’t catch that. Hold the button and try again.');
+      toast('I didn’t catch that. Press and hold, then choose Talk to try again.');
     },
     onError: msg => toast(msg, 5000),
   });
-  viewerDictation.attachHoldButton(viewerMic);
 }
 
 // ── Explanations for the save / send options ──────────
@@ -800,8 +809,6 @@ pageMenu.addEventListener('click', e => {
   hidePageMenu();
   if (what === 'draw') {
     startDrawing();
-  } else if (what === 'hear') {
-    startHearing();
   } else if (what === 'talk') {
     setTool('text');
     annot.placeAt('text', page, fx, fy, { focus: false });
@@ -877,7 +884,7 @@ if (micState !== 'ok') {
     },
     onEmpty: () => {
       practice.logEvent('dictation_retry');
-      toast('I didn’t catch that. Hold the button and try again.');
+      toast('I didn’t catch that. Press and hold, then choose Talk to try again.');
     },
     onError: msg => toast(msg, 5000),
   });

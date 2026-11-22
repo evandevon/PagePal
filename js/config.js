@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.4'; // version shown on the home screen
+export const APP_VERSION = '0.9.5'; // three text sizes (remembered), answer box outlines, marker icon, simpler toolbar and menu
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

@@ -5,6 +5,7 @@ const KEY = 'pagepal.settings';
 
 const DEFAULTS = {
   studentName: '',
+  sizeLevels: { text: 0, stamp: 1, ink: 1 }, // small/medium/large (0-2): the last size tapped for each kind
   displayMode: 'dyslexia', // see display-modes.js
   voiceName: '',           // '' = pick the best English voice automatically
   speechRate: 0.88,        // same default as Word Helper
