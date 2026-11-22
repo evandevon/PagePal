@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.8'; // offline layer fetches files exactly as asked (Safari)
+export const APP_VERSION = '0.9.9'; // free the text reader's memory when PagePal goes into the background
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

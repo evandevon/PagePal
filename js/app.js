@@ -17,7 +17,7 @@ import { scanQr } from './qr-scan.js';
 import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
 import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, wordsInSwipe, highlightHeard, clearHeard } from './viewer.js';
-import { speakable, warmUpOcr, errorDetail } from './page-text.js';
+import { speakable, warmUpOcr, errorDetail, releaseReader } from './page-text.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
@@ -529,6 +529,15 @@ async function hearSwipe(page, points, size) {
   highlightHeard(0);
   tts.readWords(said, { onWord: k => { if (run === hearRun) highlightHeard(k); } });
 }
+
+// Leaving PagePal (switching app or tab): stop reading aloud and free the
+// text reader's memory straight away (see releaseReader).
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  tts.stop();
+  releaseReader();
+});
+window.addEventListener('pagehide', () => releaseReader());
 
 tts.onSpeakingChange(on => {
   if (on) hideToast(); // so the Stop button isn't hidden behind a message

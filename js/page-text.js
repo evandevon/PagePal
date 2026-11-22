@@ -251,6 +251,19 @@ export function errorDetail(err) {
   return String(raw || 'unknown error').replace(/\s+/g, ' ').slice(0, 140);
 }
 
+/**
+ * Free the text reader's memory now. Called when PagePal goes into the
+ * background: the iPad freezes timers in background apps, so the idle timer
+ * below would never fire, and another app (another browser running PagePal)
+ * could then find too little memory to start its own reader.
+ */
+export async function releaseReader() {
+  clearTimeout(idleTimer);
+  const p = workerPromise;
+  workerPromise = null;
+  if (p) { try { (await p).terminate(); } catch { /* already gone */ } }
+}
+
 /** Free the recogniser's memory (about 100 MB) once it's been idle a while. */
 function scheduleIdle() {
   clearTimeout(idleTimer);
