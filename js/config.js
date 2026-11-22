@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.11.1'; // sends say which tool they came from (inbox v4 keeps Word Helper separate)
+export const APP_VERSION = '0.11.2'; // teacher page: copy the class link (for Word Helper)
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

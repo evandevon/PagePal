@@ -215,7 +215,7 @@ $('#in-make').addEventListener('click', async () => {
     ? ' <br>This QR code works for PagePal now. To also take work from Word Helper (it gets its own spreadsheet), update the script to version 4: paste in the new <code>PagePal-Inbox.gs</code>, run <code>setup</code>, then <strong>Deploy › Manage deployments › Edit › New version</strong>.'
     : ''));
   const url = teacherLink(APP_BASE, { name: teacher.name, url: teacher.url, join: result.join, expires: result.expires });
-  inQr = { qr: makeQr(url), label: teacher.name, expires: result.expires };
+  inQr = { qr: makeQr(url), url, label: teacher.name, expires: result.expires };
   const until = new Date(result.expires).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
   $('#in-qr').innerHTML = qrSvg(inQr.qr);
   $('#in-label').textContent = 'Send your work to ' + teacher.name;
@@ -225,6 +225,10 @@ $('#in-make').addEventListener('click', async () => {
   try { localStorage.setItem('pagepal.teacherPage', JSON.stringify({ name: teacher.name, url: teacher.url })); } catch { /* ignore */ }
 });
 
+$('#in-copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(inQr.url); toast('Class link copied. Paste it where a student would scan the QR code.'); }
+  catch { toast('Couldn’t copy the link. Use the QR code instead.'); }
+});
 $('#in-png').addEventListener('click', async () => {
   downloadBlob(await qrPng(inQr.qr, inQr.label, $('#in-expiry').textContent), `Class-QR-${fileSlug(inQr.label)}.png`);
 });
