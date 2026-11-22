@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION (and APP_VERSION in js/config.js) with each release so
 // old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.9.7';
+const CACHE_VERSION = 'pagepal-v0.9.8';
 
 const APP_SHELL = [
   './',
@@ -81,15 +81,21 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url);
   // Only handle our own files. Google Drive, speech services etc. go straight to the network.
   if (url.origin !== self.location.origin) return;
-  event.respondWith(STATIC.test(url.pathname) ? cacheFirst(event, req) : networkFirst(req));
+  event.respondWith(STATIC.test(url.pathname) ? cacheFirst(req) : networkFirst(req));
 });
 
+/**
+ * The app's own pages and code: from the network, asking the server every
+ * time (GitHub Pages otherwise lets browsers reuse a file for 10 minutes),
+ * so an update arrives straight away and old and new files never mix.
+ * The request keeps its kind (page, script, worker…): Safari refuses
+ * scripts fetched as a different kind of request.
+ */
 async function fromNetwork(req, cache) {
-  // GitHub Pages lets browsers reuse a file for 10 minutes; ask the server
-  // every time instead (a quick "not changed" when nothing's new), so an
-  // update arrives straight away and old and new files never mix.
-  const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
-  if (res.ok && res.type === 'basic') cache.put(req, res.clone());
+  const res = req.mode === 'navigate'
+    ? await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) // a page request can't be copied
+    : await fetch(req, { cache: 'no-cache' });
+  if (res.ok && res.status === 200 && res.type === 'basic') cache.put(req, res.clone()).catch(() => {});
   return res;
 }
 
@@ -108,19 +114,19 @@ async function networkFirst(req) {
     const page = await cache.match('index.html');
     if (page) return page;
   }
-  return network.catch(() => Response.error()); // still waiting? use it when it arrives
+  return network; // still waiting? use it when it arrives
 }
 
-async function cacheFirst(event, req) {
+/**
+ * Libraries, fonts and icons (including the 4 MB text reader): kept once per
+ * PagePal version, fetched exactly as the browser asked for them. They only
+ * change with a new version, which starts a fresh cache.
+ */
+async function cacheFirst(req) {
   const cache = await caches.open(CACHE_VERSION);
   const cached = await cache.match(req);
-  if (cached) {
-    event.waitUntil(fromNetwork(req, cache).catch(() => null));
-    return cached;
-  }
-  try {
-    return await fromNetwork(req, cache);
-  } catch {
-    return Response.error();
-  }
+  if (cached) return cached;
+  const res = await fetch(req);
+  if (res.ok && res.status === 200 && res.type === 'basic') cache.put(req, res.clone()).catch(() => {});
+  return res;
 }
