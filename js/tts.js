@@ -142,6 +142,23 @@ export function onSpeakingChange(fn) {
 
 export const isSpeaking = () => speakingNow;
 
+// iPad and iPhone Safari only start speech as a direct response to a tap.
+// Hear speaks a moment after the swipe (once the words are read), which
+// Safari can silently block. Speaking a silent, empty utterance during the
+// tap itself unlocks speech for the rest of the visit.
+let unlocked = false;
+
+/** Call from inside a tap or swipe handler, before any waiting. */
+export function unlock() {
+  if (unlocked || !synth || typeof SpeechSynthesisUtterance === 'undefined') return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    synth.speak(u);
+    unlocked = true;
+  } catch { /* try again on the next tap */ }
+}
+
 /** Stop anything currently being read. */
 export function stop() {
   runId++;

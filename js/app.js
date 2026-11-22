@@ -499,6 +499,7 @@ let lastBlankHint = 0;
 // ── Hear: swipe over words to have them read aloud ─────
 let hearRun = 0;
 async function hearSwipe(page, points, size) {
+  tts.unlock(); // still inside the swipe's touch: lets iPads speak a moment later
   const run = ++hearRun;
   tts.stop();
   if (viewerDictation) viewerDictation.abort();
@@ -590,6 +591,7 @@ function setTool(tool) {
 }
 
 function startHearing() {
+  tts.unlock();
   setTool('hear');
   toast('Swipe your finger along the words you want to hear.', 3500);
 }
