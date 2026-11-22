@@ -12,19 +12,22 @@ PagePal builds on two earlier projects: [Say It, Spell It](https://evandevon.git
 - [x] **Stage 1: Get a worksheet.** Scan QR code, open a file (PDF, Word .docx, picture), take photos with four-corner straightening and clean-up (multi-page), paste a picture or link, worksheet viewer with pinch zoom, recent worksheets. Save to Files / share now include page images named to match the CSV. Teacher page for worksheet and class QR codes; Send to teacher.
 - [x] **Stage 2: Type on the page.** Press and hold (or right-click) anywhere on the page, or tap **+ Add**, for a menu (Type, Talk, Tick, Cross, Circle, Draw); a short tap never adds anything, so stray taps and taps on words are safe. Text boxes: move, resize, bigger/smaller, colour, delete; tick, cross and circle stamps; freehand Draw with a Done drawing bar; undo/redo; autosaves with the session data. Saved, shared and sent page pictures include the answers.
 - [x] **New page:** lined (wide / narrow), handwriting (dotted middle line), story page, 1 cm and 5 mm squares, dot grid, blank; Add page for longer work.
-- [ ] **Stage 3: Dictation on the page.** Done: hold-to-talk into the selected box, Hear. Still to do: word suggestions and spell check from Word Helper.
+- [x] **Stage 3: Talk on the page.** Talk (press-and-hold menu) types spoken words into an answer box. iPad auto-correct is off in answer boxes, so answers show the student's own spelling. (Word suggestions and spell check were tried and taken out to keep PagePal simple; they live in Word Helper.)
 - [ ] **Stage 4: QR to PDF.** Mostly done in Stage 1 (scanning, Drive links, teacher QR page); needs the Google API key below and testing on school iPads.
 - [x] **Stage 5: Read aloud.** Tap **Hear** on the toolbar and swipe a finger over words like a highlighter: just that area is read and spoken, each word lighting up purple as it's said, with a **Stop reading** button. PDFs use their own text (exact, instant); photos, pictures, Word files and scanned PDFs have the swiped area read by on-device text recognition (Tesseract). With an answer box selected, Hear reads the answer. The app version shows in small print beside the PagePal name on the home screen.
 - [ ] **Stage 6: Data and reports.** Full report, timeline graph, and "Send to teacher" into the teacher's own Google Sheet, set up by scanning a teacher QR code.
 - [ ] **Stage 7: Polish and rollout.** Accessibility checks, testing on school iPads and Chromebooks, teacher guide.
 
-## Try Stage 0
+## Sending work
 
-On the home screen, the **Try the helpers** card has a sentence to tap and play, an answer box with **Hold to talk**, and **Hear my answer**. Then **Send my work to the teacher**:
+PagePal is a worksheet tool: the home screen is just the student's name, **Get a worksheet** and **My worksheets**. When a worksheet is done, **Send** offers:
 
-- **Email or share:** opens the iPad share sheet with the report attached as a CSV file (Mail, AirDrop, Google Classroom, Seesaw, Drive).
-- **Email summary:** opens an email draft with a short text summary, addressed to the teacher's email from Settings. Email links can't carry attachments, so this is the fallback.
-- **Save to Files:** downloads the CSV report. On iPad it lands in Files › Downloads.
+- **Send to teacher:** (after scanning the class QR code) a row in the teacher's Google Sheet with the answers and stats, and a PDF of the worksheet in their Drive.
+- **Email or share:** opens the iPad share sheet with the CSV report and page pictures (Mail, AirDrop, Google Classroom, Seesaw, Drive).
+- **Email summary:** an email draft with a short text summary, addressed to the teacher's email from Settings.
+- **Save to Files:** downloads the CSV report and page pictures. On iPad they land in Files › Downloads.
+
+(The home screen's "Try the helpers" practice card was removed to keep PagePal a worksheet tool; typing helpers live in Word Helper.)
 
 ## Teacher page
 

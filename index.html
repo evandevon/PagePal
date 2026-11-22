@@ -87,59 +87,6 @@
       <p id="recent-empty" class="empty">Worksheets you open will be kept here so you can finish them later.</p>
     </section>
 
-    <section class="card practice" aria-labelledby="h-practice">
-      <h2 id="h-practice">Try the helpers</h2>
-
-      <div class="read-row">
-        <button id="btn-play" class="round-btn play" type="button" aria-label="Read the whole sentence">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <p id="practice-text" class="reading-surface"></p>
-      </div>
-
-      <label for="practice-answer" class="field-label">My answer</label>
-      <textarea id="practice-answer" class="reading-surface answer" rows="3"
-        autocorrect="off" autocomplete="off" autocapitalize="sentences" spellcheck="false"
-        placeholder="Type here, or hold the microphone and talk"></textarea>
-
-      <div class="answer-tools">
-        <button id="btn-mic" class="mic-btn" type="button" aria-label="Hold to talk" aria-pressed="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-          <span>Hold to talk</span>
-        </button>
-        <div id="mic-preview" class="mic-preview" role="status" aria-live="polite"></div>
-        <button id="btn-hear-answer" class="tool-btn" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>
-          <span>Hear my answer</span>
-        </button>
-        <button id="btn-clear" class="tool-btn quiet" type="button">Clear</button>
-      </div>
-      <p id="mic-message" class="note" hidden></p>
-    </section>
-
-    <section class="card send" aria-labelledby="h-send">
-      <h2 id="h-send">Send my work to the teacher</h2>
-      <dl id="stats" class="stats"></dl>
-      <div class="send-tools options">
-        <button id="btn-send-teacher" class="tool-btn primary" type="button" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
-          <span>Send to teacher</span>
-        </button>
-        <button id="btn-share" class="tool-btn primary" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
-          <span>Email or share</span>
-        </button>
-        <button id="btn-email" class="tool-btn" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3z"/><path d="m3 7 9 6 9-6"/></svg>
-          <span>Email summary</span>
-        </button>
-        <button id="btn-save" class="tool-btn" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-          <span>Save to Files</span>
-        </button>
-      </div>
-    </section>
-
     <section id="install-card" class="card install" hidden>
       <h2>Keep your work safe</h2>
       <p id="install-text">Add PagePal to your Home Screen. It opens like an app, works without wifi, and keeps your worksheets.</p>
@@ -377,7 +324,6 @@
         <button id="btn-disconnect-teacher" class="tool-btn quiet" type="button" hidden>Disconnect</button>
       </div>
 
-      <label class="check"><input id="set-suggestions" type="checkbox"> Word suggestions and spell check</label>
 
       <p class="note"><a href="teacher.html" target="_blank" rel="noopener">For teachers: make QR codes</a></p>
 

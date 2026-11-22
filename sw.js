@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION (and APP_VERSION in js/config.js) with each release so
 // old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.9.12';
+const CACHE_VERSION = 'pagepal-v0.11.0';
 
 const APP_SHELL = [
   './',
@@ -28,7 +28,6 @@ const APP_SHELL = [
   'js/display-modes.js',
   'js/tts.js',
   'js/dictation.js',
-  'js/readable.js',
   'js/session-log.js',
   'js/export.js',
   'js/store.js',

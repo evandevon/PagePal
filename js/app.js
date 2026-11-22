@@ -6,7 +6,6 @@ import { getSettings, getSetting, setSetting } from './settings.js';
 import { DISPLAY_MODES, applyDisplayMode } from './display-modes.js';
 import * as tts from './tts.js';
 import { Dictation, dictationStatus } from './dictation.js';
-import { makeReadable } from './readable.js';
 import { SessionLog, fmtDuration } from './session-log.js';
 import { requestPersistence } from './store.js';
 import * as worksheets from './worksheets.js';
@@ -20,7 +19,7 @@ import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnn
 import { speakable, warmUpOcr, errorDetail, releaseReader } from './page-text.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
-import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
+import { shareWork, saveWork, emailSummary, sendToTeacher, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
 
 const settings = getSettings();
 
@@ -35,7 +34,6 @@ nameInput.value = settings.studentName;
 nameInput.addEventListener('input', () => {
   const name = nameInput.value.trim();
   setSetting('studentName', name);
-  practice.student = name;
   if (wsSession) wsSession.student = name;
 });
 
@@ -44,14 +42,12 @@ function setWorkStudent(name) {
   name = String(name || '').trim().slice(0, 60);
   setSetting('studentName', name);
   nameInput.value = name;
-  practice.student = name;
   if (wsSession) wsSession.student = name;
   const rec = currentWorksheet();
   if (rec) { rec.student = name; scheduleSave(); }
 }
 
-// ── Sessions: the practice card, and the open worksheet ─
-const practice = new SessionLog({ student: settings.studentName, worksheet: 'Practice' });
+// ── The open worksheet's session (time, words, listening) ─
 let wsSession = null;
 
 // ── Errors from any worksheet source ──────────────────
@@ -774,8 +770,7 @@ function addSendHelp(btn, key) {
   row.append(btn, info);
   wrap.append(row, hint, details);
 }
-[['#sd-teacher', 'teacher'], ['#sd-share', 'share'], ['#sd-email', 'email'], ['#sd-save', 'save'],
- ['#btn-send-teacher', 'teacher'], ['#btn-share', 'share'], ['#btn-email', 'email'], ['#btn-save', 'save']]
+[['#sd-teacher', 'teacher'], ['#sd-share', 'share'], ['#sd-email', 'email'], ['#sd-save', 'save']]
   .forEach(([sel, key]) => addSendHelp($(sel), key));
 
 // ── No browser right-click menu ───────────────────────
@@ -842,94 +837,6 @@ function startTalking() {
 }
 $('#talk-stop').addEventListener('click', () => { if (viewerDictation) viewerDictation.stop(); });
 
-// ── Practice card ─────────────────────────────────────
-const readable = makeReadable(
-  $('#practice-text'),
-  'Tap any word to hear it, or press play to hear the whole sentence.',
-  { onListen: (text, scope) => { practice.logListen(text, scope); renderPracticeStats(); } },
-);
-$('#btn-play').addEventListener('click', () => readable.play());
-
-const answer = $('#practice-answer');
-answer.addEventListener('beforeinput', e => {
-  if (e.inputType === 'insertLineBreak' || (e.inputType === 'insertText' && /^[\s.,!?;:]$/.test(e.data || ''))) {
-    const before = answer.value.slice(0, answer.selectionStart);
-    const m = before.match(/([\p{L}\p{N}'’-]+)$/u);
-    if (m) practice.logWord(m[1], 'typed');
-  }
-});
-answer.addEventListener('input', () => { practice.activity(); renderPracticeStats(); });
-
-function insertAtCursor(textarea, text) {
-  const start = textarea.selectionStart ?? textarea.value.length;
-  const end = textarea.selectionEnd ?? start;
-  const before = textarea.value.slice(0, start);
-  const after = textarea.value.slice(end);
-  const lead = before && !/\s$/.test(before) ? ' ' : '';
-  const trail = after && !/^\s/.test(after) ? ' ' : '';
-  textarea.value = before + lead + text + trail + after;
-  const caret = (before + lead + text + trail).length;
-  textarea.setSelectionRange(caret, caret);
-}
-
-const micBtn = $('#btn-mic');
-const micPreview = $('#mic-preview');
-const micMessage = $('#mic-message');
-const micState = dictationStatus();
-if (micState !== 'ok') {
-  micBtn.hidden = true;
-  micMessage.hidden = false;
-  micMessage.textContent = micState === 'insecure'
-    ? 'Talking needs a secure (https) page.'
-    : 'Talking isn’t available in this browser. Try Safari on iPad, or Chrome.';
-} else {
-  const dictation = new Dictation({
-    onPreview: text => { micPreview.textContent = text || ''; },
-    onState: on => {
-      micBtn.classList.toggle('listening', on);
-      micBtn.setAttribute('aria-pressed', String(on));
-      micBtn.querySelector('span').textContent = on ? 'Listening… let go to stop' : 'Hold to talk';
-      if (on) { tts.stop(); practice.logEvent('dictation_start'); }
-    },
-    onResult: text => {
-      insertAtCursor(answer, text);
-      practice.logPhrase(text, 'dictated');
-      renderPracticeStats();
-    },
-    onEmpty: () => {
-      practice.logEvent('dictation_retry');
-      toast('I didn’t catch that. Press and hold, then choose Talk to try again.');
-    },
-    onError: msg => toast(msg, 5000),
-  });
-  dictation.attachHoldButton(micBtn);
-}
-
-$('#btn-hear-answer').addEventListener('click', () => {
-  const text = answer.value.trim();
-  if (!text) { toast('Write or say an answer first.'); return; }
-  practice.logListen(text, 'answer');
-  tts.speak(text);
-  renderPracticeStats();
-});
-
-$('#btn-clear').addEventListener('click', () => {
-  if (answer.value && !confirm('Clear your answer and start again?')) return;
-  answer.value = '';
-  Object.assign(practice, new SessionLog({ student: practice.student, worksheet: 'Practice' }));
-  renderPracticeStats();
-});
-
-function renderPracticeStats() { renderStatsInto($('#stats'), practice, answer.value); }
-renderPracticeStats();
-setInterval(() => { if (practice.start && !$('#home').hidden) renderPracticeStats(); }, 1000);
-
-const practiceWork = () => ({ session: practice, answer: answer.value });
-$('#btn-share').addEventListener('click', e => { if (!needsName(practiceWork(), nameInput)) runSend(shareWork, practiceWork(), e.currentTarget); });
-$('#btn-save').addEventListener('click', e => { if (!needsName(practiceWork(), nameInput)) runSend(saveWork, practiceWork(), e.currentTarget); });
-$('#btn-email').addEventListener('click', () => { if (!needsName(practiceWork(), nameInput)) emailSummary(practiceWork()); });
-$('#btn-send-teacher').addEventListener('click', e => { if (!needsName(practiceWork(), nameInput)) runSend(sendToTeacher, practiceWork(), e.currentTarget); });
-
 // ── Settings dialog ────────────────────────────────────
 const dialog = $('#settings');
 const modeSel = $('#set-mode');
@@ -973,17 +880,12 @@ const emailInput = $('#set-teacher-email');
 emailInput.value = settings.teacherEmail || '';
 emailInput.addEventListener('change', () => setSetting('teacherEmail', emailInput.value.trim()));
 
-const suggestBox = $('#set-suggestions');
-suggestBox.checked = settings.suggestions;
-suggestBox.addEventListener('change', () => setSetting('suggestions', suggestBox.checked));
 
 function renderTeacher() {
   const t = getSetting('teacher');
   $('#set-teacher-status').textContent = t ? `Sending work to ${t.name}` : 'Not connected';
   $('#btn-connect-teacher').textContent = t ? 'Scan a new class QR code' : 'Scan class QR code';
   $('#btn-disconnect-teacher').hidden = !t;
-  $('#btn-send-teacher').hidden = !t;
-  if (t) $('#btn-send-teacher span').textContent = `Send to ${t.name}`;
 }
 renderTeacher();
 $('#btn-connect-teacher').addEventListener('click', async () => {
