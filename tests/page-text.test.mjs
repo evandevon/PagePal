@@ -88,22 +88,3 @@ test('a swipe covers its own box, widened by half the highlighter', () => {
   const edge = swipeArea([[0.001, 0.999]], 0.04, 1.414);
   assert.equal(edge.x0, 0); assert.equal(edge.y1, 1);
 });
-
-test('word suggestions: completions, corrections and tidied definitions (offline)', async () => {
-  const sp = await import('../js/spelling.js');
-  sp.setOnline(false);
-  assert.deepEqual(sp.completions('beau'), ['beauty', 'beautiful']);
-  assert.equal(sp.misspelt('sed'), true);
-  assert.equal(sp.misspelt('because'), false);
-  assert.ok((await sp.spellingSuggestions('frend')).some(s => s.word === 'friend'));
-  assert.equal(await sp.definition('dictionary'), 'Book listing');    // unfinished "(usu" removed
-  assert.equal(await sp.definition('said'), null);                     // "Past and past part" isn't shown
-  assert.match(await sp.definition('happy'), /pleasure/);
-});
-
-test('the word at the cursor, and the word just finished', async () => {
-  const { wordAround, wordBefore } = await import('../js/word-helper.js').catch(() => ({}));
-  if (!wordAround) return; // needs a browser (it touches window)
-  assert.deepEqual(wordAround('I sed it', 4), { start: 2, end: 5, word: 'sed' });
-  assert.deepEqual(wordBefore('I sed ', 6), { start: 2, end: 5, word: 'sed' });
-});

@@ -84,32 +84,6 @@ export class SessionLog {
     this.words.push({ word: clean, how, t: +this._t().toFixed(1), from });
   }
 
-  /**
-   * A word swapped for a suggestion or spelling fix (how = 'corrected' or
-   * 'suggestion'). The word it replaced was usually logged as typed a moment
-   * ago: that entry becomes the correction, so the word isn't counted twice.
-   */
-  replaceWord(from, to, how = 'corrected') {
-    const f = String(from).replace(/[^\p{L}\p{N}'’-]/gu, '').toLowerCase();
-    const clean = String(to).replace(/[^\p{L}\p{N}'’-]/gu, '');
-    if (!clean) return;
-    this.activity();
-    for (let i = this.words.length - 1; i >= 0; i--) {
-      const w = this.words[i];
-      if (w.how === 'typed' && w.word.toLowerCase() === f) {
-        this.words[i] = { ...w, word: clean, how, from: w.word, t: +this._t().toFixed(1) };
-        return;
-      }
-    }
-    this.words.push({ word: clean, how, t: +this._t().toFixed(1), from: String(from) || null });
-  }
-
-  /** A word whose meaning the student looked up (the ? button). */
-  logDefinition(word) {
-    this.activity();
-    this.events.push({ type: 'definition', text: String(word).slice(0, 60), t: +this._t().toFixed(1) });
-  }
-
   /** Log every word in a phrase (e.g. a dictated sentence). */
   logPhrase(text, how) {
     String(text).split(/\s+/).forEach(w => this.logWord(w, how));
@@ -163,7 +137,6 @@ export class SessionLog {
       connectives: allWords.filter(w => CONNECTIVES.has(w)).length,
       listens: listens.length,
       wordsListened: [...new Set(listens.filter(e => e.scope === 'word').map(e => e.text.toLowerCase()))],
-      wordsDefined: [...new Set(this.events.filter(e => e.type === 'definition').map(e => e.text.toLowerCase()))],
       dictationRetries: this.events.filter(e => e.type === 'dictation_retry').length,
     };
   }
@@ -222,7 +195,6 @@ export function toCSV(log, finalText = '') {
     ['Connectives used', st.connectives],
     ['Times listened', st.listens],
     ['Words listened to', st.wordsListened.join(' ')],
-    ['Words defined', (st.wordsDefined || []).join(' ')],
     [],
     ['Answer', finalText],
     [],
@@ -244,7 +216,6 @@ export function toText(log, finalText = '') {
     `Assistance rate: ${st.assistanceRate === null ? '-' : st.assistanceRate + '%'}`,
     `Vocabulary variety: ${st.ttr ?? '-'} · Words per minute: ${st.wpm ?? '-'} · Connectives: ${st.connectives}`,
     `Listened ${st.listens} times${st.wordsListened.length ? ': ' + st.wordsListened.join(', ') : ''}`,
-    ...((st.wordsDefined || []).length ? [`Looked up the meaning of: ${st.wordsDefined.join(', ')}`] : []),
   ];
   if (finalText.trim()) lines.push('', 'Answer:', finalText.trim());
   return lines.join('\n');

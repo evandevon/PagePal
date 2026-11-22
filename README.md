@@ -12,8 +12,7 @@ PagePal builds on two earlier projects: [Say It, Spell It](https://evandevon.git
 - [x] **Stage 1: Get a worksheet.** Scan QR code, open a file (PDF, Word .docx, picture), take photos with four-corner straightening and clean-up (multi-page), paste a picture or link, worksheet viewer with pinch zoom, recent worksheets. Save to Files / share now include page images named to match the CSV. Teacher page for worksheet and class QR codes; Send to teacher.
 - [x] **Stage 2: Type on the page.** Press and hold (or right-click) anywhere on the page, or tap **+ Add**, for a menu (Type, Talk, Tick, Cross, Circle, Draw); a short tap never adds anything, so stray taps and taps on words are safe. Text boxes: move, resize, bigger/smaller, colour, delete; tick, cross and circle stamps; freehand Draw with a Done drawing bar; undo/redo; autosaves with the session data. Saved, shared and sent page pictures include the answers.
 - [x] **New page:** lined (wide / narrow), handwriting (dotted middle line), story page, 1 cm and 5 mm squares, dot grid, blank; Add page for longer work.
-- [x] **Stage 3: Talk and word help.** Talk (press-and-hold menu) types spoken words into an answer. **Word suggestions and spell check** from Word Helper: while typing, a dropdown of likely words appears at the cursor; after a misspelt word, "Did you mean…"; tapping inside a word shows corrections or alternatives. Each row: 🔊 hear it · the word (tap to use it) · **?** hear what it means. Words chosen, corrected, listened to and defined are recorded (Suggestions and Spell corrections columns in the teacher's sheet; definitions in the CSV). iPad auto-correct is off in answer boxes, so answers show the student's own spelling.
-  - *Where the word data goes:* suggestions, listening and common definitions use built-in lists (on the iPad). With **Look up unusual words online** on (Settings, default on, as in Word Helper), a single unusual word is sent to Datamuse (spelling) or the Free Dictionary API (meanings): no name, sentence or worksheet.
+- [ ] **Stage 3: Dictation on the page.** Done: hold-to-talk into the selected box, Hear. Still to do: word suggestions and spell check from Word Helper.
 - [ ] **Stage 4: QR to PDF.** Mostly done in Stage 1 (scanning, Drive links, teacher QR page); needs the Google API key below and testing on school iPads.
 - [x] **Stage 5: Read aloud.** Tap **Hear** on the toolbar and swipe a finger over words like a highlighter: just that area is read and spoken, each word lighting up purple as it's said, with a **Stop reading** button. PDFs use their own text (exact, instant); photos, pictures, Word files and scanned PDFs have the swiped area read by on-device text recognition (Tesseract). With an answer box selected, Hear reads the answer. The app version shows in small print beside the PagePal name on the home screen.
 - [ ] **Stage 6: Data and reports.** Full report, timeline graph, and "Send to teacher" into the teacher's own Google Sheet, set up by scanning a teacher QR code.
@@ -90,9 +89,6 @@ js/
   send.js              Share, save, email and Send to teacher, with paired file names
   pdf-writer.js        Tiny PDF maker (one JPEG per page) for Send to teacher
   page-text.js         Reading the words under a Hear swipe (PDF text, or text recognition)
-  word-helper.js       Word suggestions dropdown for answer boxes (from Word Helper)
-  spelling.js          Word Helper's suggestion, spell-check and definition logic
-  words-data.js        Word Helper's school word list and short definitions
   teacher.js           Teacher page logic
   ui.js                Small shared helpers
 lib/                   Third-party libraries, kept locally for offline use (see lib/README.md)

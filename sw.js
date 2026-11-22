@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION (and APP_VERSION in js/config.js) with each release so
 // old copies are cleared.
 
-const CACHE_VERSION = 'pagepal-v0.10.0';
+const CACHE_VERSION = 'pagepal-v0.9.12';
 
 const APP_SHELL = [
   './',
@@ -46,9 +46,6 @@ const APP_SHELL = [
   'js/send.js',
   'js/pdf-writer.js',
   'js/page-text.js',
-  'js/word-helper.js',
-  'js/spelling.js',
-  'js/words-data.js',
   'js/teacher.js',
   'teacher.html',
   'teacher.css',
