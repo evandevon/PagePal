@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.10'; // open worksheets with pictures in memory; reconnect if Safari loses them
+export const APP_VERSION = '0.9.11'; // thumbnails kept as plain data, so they can't vanish
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

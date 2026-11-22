@@ -43,9 +43,53 @@ export function defaultPhotoTitle(prefix = 'Photo') {
   return `${prefix} ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} ${d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
+/**
+ * Save a worksheet. Its thumbnail is kept as plain bytes inside the record
+ * (thumbBytes), not as a separate picture: Safari sometimes loses track of
+ * saved pictures until the page is refreshed, and the thumbnails on the
+ * home screen would vanish. (record.thumb is the in-memory picture.)
+ */
 async function save(record) {
-  await store.put('worksheets', record);
+  if (record.thumb && !record.thumbBytes) {
+    try {
+      record.thumbBytes = await record.thumb.arrayBuffer();
+      record.thumbType = record.thumb.type || 'image/jpeg';
+    } catch { /* unreadable right now: remade from page 1 next time it's opened */ }
+  }
+  const { thumb, ...stored } = record;
+  await store.put('worksheets', stored);
   return record;
+}
+
+/** Store converted thumbnail bytes, changing nothing else in the saved worksheet. */
+async function keepThumb(id, bytes, type) {
+  const fresh = await store.get('worksheets', id);
+  if (!fresh || fresh.thumbBytes) return;
+  fresh.thumbBytes = bytes;
+  fresh.thumbType = type;
+  delete fresh.thumb;
+  await store.put('worksheets', fresh);
+}
+
+/** The thumbnail as a picture, from the bytes kept in the record. */
+function thumbOf(record) {
+  return record.thumbBytes ? new Blob([record.thumbBytes], { type: record.thumbType || 'image/jpeg' }) : null;
+}
+
+/** Make the thumbnail again from page 1 (for worksheets whose old thumbnail Safari lost). */
+async function remakeThumb(record) {
+  try {
+    if (record.kind === 'pdf') {
+      const doc = await openPdf(record.file);
+      try { record.thumb = await pdfThumbnail(doc); } finally { doc.destroy(); }
+    } else if (record.pages && record.pages[0]) {
+      record.thumb = await thumbnail(await blobToCanvas(record.pages[0].blob, 1200));
+    }
+    record.thumbBytes = null;
+    await save(record);
+  } catch (err) {
+    console.warn('Could not remake the thumbnail', err);
+  }
 }
 
 export async function fromPdf(blob, { title, from = 'file', sourceKey } = {}) {
@@ -168,6 +212,8 @@ export async function load(id) {
     try {
       if (record.file) record.file = await inMemory(record.file);
       if (record.pages) for (const p of record.pages) if (p.blob) p.blob = await inMemory(p.blob);
+      record.thumb = thumbOf(record);
+      if (!record.thumb) remakeThumb(record); // in the background
       return record;
     } catch (err) {
       if (attempt) throw new PicturesUnreadableError(err);
@@ -188,22 +234,27 @@ async function inMemory(blob) {
   return new Blob([await blob.arrayBuffer()], { type: blob.type });
 }
 
-/** Small thumbnails for the worksheet list, in memory, reconnecting once if Safari has lost track of them. */
+/**
+ * The worksheet list with thumbnails. Thumbnails come from the bytes kept in
+ * each record, so they can't vanish. Older worksheets kept them as separate
+ * pictures: those are converted now if Safari can read them (otherwise
+ * they're remade when the worksheet is next opened).
+ */
 export async function recentWithThumbs() {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const items = await recent();
-    try {
-      for (const w of items) if (w.thumb) w.thumb = await inMemory(w.thumb);
-      return items;
-    } catch {
-      if (attempt) {
-        for (const w of items) w.thumb = null; // show the list without pictures
-        return items;
-      }
-      store.reconnect();
+  const items = await recent();
+  for (const w of items) {
+    const legacy = w.thumb instanceof Blob ? w.thumb : null;
+    w.thumb = thumbOf(w);
+    if (!w.thumb && legacy) {
+      try {
+        w.thumbBytes = await legacy.arrayBuffer();
+        w.thumbType = legacy.type || 'image/jpeg';
+        w.thumb = thumbOf(w);
+        keepThumb(w.id, w.thumbBytes, w.thumbType).catch(() => {}); // keep the converted thumbnail
+      } catch { /* Safari has lost it for now */ }
     }
   }
-  return [];
+  return items;
 }
 export const remove = id => store.remove('worksheets', id);
 export const recent = () => store.recentWorksheets(20);
