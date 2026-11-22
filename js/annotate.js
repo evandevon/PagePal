@@ -459,7 +459,14 @@ export class Annotator {
       const ta = document.createElement('textarea');
       ta.className = 'annot-input';
       ta.rows = 1;
+      // The student's own spelling: no iPad auto-correct, predictive
+      // replacements or red underlines, so the answer (and the teacher's
+      // data) shows what they actually typed. PagePal's own word
+      // suggestions are offered separately, for the student to choose.
       ta.spellcheck = false;
+      ta.setAttribute('autocorrect', 'off');
+      ta.setAttribute('autocomplete', 'off');
+      ta.setAttribute('autocapitalize', 'sentences');
       ta.setAttribute('aria-label', 'Answer');
       ta.value = it.text || '';
       ta.addEventListener('focus', () => this.select(it.id));
