@@ -18,6 +18,7 @@ import { parseLink } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
 import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, wordsInSwipe, highlightHeard, clearHeard } from './viewer.js';
 import { speakable, warmUpOcr, errorDetail, releaseReader } from './page-text.js';
+import { attachWordHelper, hideWordHelper } from './word-helper.js';
 import { TEMPLATES, renderTemplate } from './templates.js';
 import { COLORS, COLOR_NAMES, answerText } from './annotate.js';
 import { shareWork, saveWork, emailSummary, sendToTeacher, needsName, joinInbox, INBOX_ERRORS, SEND_HELP } from './send.js';
@@ -91,6 +92,7 @@ async function openRecord(record, { push = true } = {}) {
 }
 
 function backToHome() {
+  hideWordHelper();
   if (history.state && history.state.ws) history.back();
   else showHome();
 }
@@ -434,6 +436,7 @@ initViewer({
     },
     onSelect: () => updateTools(),
     onTypedWord: word => { if (wsSession) wsSession.logWord(word, 'typed'); },
+    onTextarea: ta => attachWordHelper(ta, helperFor(() => wsSession, scheduleSave)),
     onLongPress: spot => showPageMenu(spot),
     // The size last tapped for text, stamps or drawing is where new ones start.
     get sizeLevels() { return getSetting('sizeLevels'); },
@@ -498,6 +501,20 @@ function markSent(how) {
 }
 
 let lastBlankHint = 0;
+
+// ── Word suggestions (from Word Helper) ───────────────
+/** Word suggestion handlers that record into a session log (worksheet or practice). */
+function helperFor(getLog, saved) {
+  return {
+    enabled: () => getSetting('suggestions'),
+    online: () => getSetting('onlineLookups'),
+    speak: text => tts.speak(text),
+    onSuggestion: word => { const log = getLog(); if (log) log.logWord(word, 'suggestion'); saved(); },
+    onCorrection: (from, to) => { const log = getLog(); if (log) log.replaceWord(from, to, 'corrected'); saved(); },
+    onListen: word => { const log = getLog(); if (log) log.logListen(word, 'word'); saved(); },
+    onDefine: word => { const log = getLog(); if (log) log.logDefinition(word); saved(); },
+  };
+}
 
 // ── Hear: swipe over words to have them read aloud ─────
 let hearRun = 0;
@@ -851,6 +868,7 @@ const readable = makeReadable(
 $('#btn-play').addEventListener('click', () => readable.play());
 
 const answer = $('#practice-answer');
+attachWordHelper(answer, helperFor(() => practice, () => renderPracticeStats()));
 answer.addEventListener('beforeinput', e => {
   if (e.inputType === 'insertLineBreak' || (e.inputType === 'insertText' && /^[\s.,!?;:]$/.test(e.data || ''))) {
     const before = answer.value.slice(0, answer.selectionStart);
@@ -974,8 +992,16 @@ emailInput.value = settings.teacherEmail || '';
 emailInput.addEventListener('change', () => setSetting('teacherEmail', emailInput.value.trim()));
 
 const suggestBox = $('#set-suggestions');
+const onlineBox = $('#set-online-lookups');
 suggestBox.checked = settings.suggestions;
-suggestBox.addEventListener('change', () => setSetting('suggestions', suggestBox.checked));
+onlineBox.checked = settings.onlineLookups;
+onlineBox.disabled = !settings.suggestions;
+suggestBox.addEventListener('change', () => {
+  setSetting('suggestions', suggestBox.checked);
+  onlineBox.disabled = !suggestBox.checked;
+  if (!suggestBox.checked) hideWordHelper();
+});
+onlineBox.addEventListener('change', () => setSetting('onlineLookups', onlineBox.checked));
 
 function renderTeacher() {
   const t = getSetting('teacher');

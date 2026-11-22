@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.9.12'; // iPad auto-correct off in answer boxes
+export const APP_VERSION = '0.10.0'; // word suggestions, spell check and definitions (from Word Helper)
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

@@ -125,6 +125,7 @@ export function drawItems(ctx, items, pageIndex, width, height, fontFamily) {
  *            onTap({page, fx, fy})      → true if the tap was handled (a printed word)
  *            onBlankTap(spot)           → a short tap on empty paper (show a hint)
  *            onHighlight({page, points, size}) → a Hear swipe (fractions of the page)
+ *            onTextarea(ta)             → a new answer box (to add word suggestions)
  */
 export class Annotator {
   constructor(pageEls, items, callbacks = {}) {
@@ -469,6 +470,7 @@ export class Annotator {
       ta.setAttribute('autocapitalize', 'sentences');
       ta.setAttribute('aria-label', 'Answer');
       ta.value = it.text || '';
+      if (this.cb.onTextarea) this.cb.onTextarea(ta); // word suggestions
       ta.addEventListener('focus', () => this.select(it.id));
       ta.addEventListener('beforeinput', e => this._logTyping(ta, e));
       ta.addEventListener('input', () => {

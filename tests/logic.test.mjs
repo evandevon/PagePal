@@ -124,3 +124,19 @@ test('PDF maker: one page per picture, and every cross-reference points at its o
   const entries = text.slice(xrefAt).split('\n').slice(3).filter(l => / n $/.test(l));
   entries.forEach((l, i) => assert.ok(text.slice(Number(l.slice(0, 10))).startsWith(`${i + 1} 0 obj`), `object ${i + 1}`));
 });
+
+test('a corrected word replaces its typed entry; definitions are listed', async () => {
+  const { SessionLog } = await import('../js/session-log.js');
+  let t = 0;
+  const log = new SessionLog({ now: () => t });
+  log.logWord('I', 'typed'); log.logWord('sed', 'typed');
+  t = 1000; log.replaceWord('sed', 'said', 'corrected');
+  log.logWord('beautiful', 'suggestion');
+  log.logDefinition('beautiful');
+  const st = log.stats('I said beautiful');
+  assert.equal(st.typed, 1);
+  assert.equal(st.corrected, 1);
+  assert.equal(st.suggestion, 1);
+  assert.deepEqual(st.wordsDefined, ['beautiful']);
+  assert.equal(log.words.find(w => w.how === 'corrected').from, 'sed');
+});
