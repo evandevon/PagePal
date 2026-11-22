@@ -2,7 +2,7 @@
 // four-corner page straightening maths.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLink, driveFileId, worksheetLink, teacherLink, decodeTeacher, encodeTeacher } from '../js/links.js';
+import { parseLink, driveFileId, worksheetLink, teacherLink, decodeTeacher, encodeTeacher, firstLinkIn } from '../js/links.js';
 import { rectToQuad, applyH, quadOutputSize, isFullFrame } from '../js/image-tools.js';
 import { unsupportedReason, isDocx, cleanName } from '../js/worksheets.js';
 
@@ -83,4 +83,17 @@ test('class QR codes carry a join code and expiry, never the sending key', () =>
   // Older codes that held the key directly still work.
   const old = { name: 'Ms Lee', url: 'https://script.google.com/macros/s/X/exec', secret: 'k3y' };
   assert.deepEqual(decodeTeacher(encodeTeacher(old)), old);
+});
+
+test('class links from Classroom Inbox (…/classroom_inbox/join/?teacher=…) are accepted', () => {
+  const t = { name: 'Mr Evans 3/4B', url: 'https://script.google.com/macros/s/AKfy/exec', join: 'j'.repeat(16), expires: 0 };
+  const link = teacherLink('https://evandevon.github.io/classroom_inbox/join/', t);
+  assert.match(link, /^https:\/\/evandevon\.github\.io\/classroom_inbox\/join\/\?teacher=/);
+  assert.deepEqual(parseLink(link), { type: 'teacher', teacher: t }); // forever code: expires 0
+});
+
+test('firstLinkIn finds a class link inside a pasted message', () => {
+  assert.equal(firstLinkIn('Join here: https://evandevon.github.io/classroom_inbox/join/?teacher=abc. Thanks!'),
+    'https://evandevon.github.io/classroom_inbox/join/?teacher=abc');
+  assert.equal(firstLinkIn('no link here'), '');
 });

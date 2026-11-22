@@ -3,7 +3,7 @@
 // remembered per device by settings.js.
 
 export const APP_NAME = 'PagePal';
-export const APP_VERSION = '0.11.2'; // teacher page: copy the class link (for Word Helper)
+export const APP_VERSION = '0.12.0'; // class QR codes moved to Classroom Inbox; paste a class link in Settings; settings stay in step with other tabs
 
 // Language for dictation and the preferred read-aloud accent.
 export const SPEECH_LANG = 'en-AU';

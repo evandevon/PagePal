@@ -15,14 +15,14 @@ PagePal builds on two earlier projects: [Say It, Spell It](https://evandevon.git
 - [x] **Stage 3: Talk on the page.** Talk (press-and-hold menu) types spoken words into an answer box. iPad auto-correct is off in answer boxes, so answers show the student's own spelling. (Word suggestions and spell check were tried and taken out to keep PagePal simple; they live in Word Helper.)
 - [ ] **Stage 4: QR to PDF.** Mostly done in Stage 1 (scanning, Drive links, teacher QR page); needs the Google API key below and testing on school iPads.
 - [x] **Stage 5: Read aloud.** Tap **Hear** on the toolbar and swipe a finger over words like a highlighter: just that area is read and spoken, each word lighting up purple as it's said, with a **Stop reading** button. PDFs use their own text (exact, instant); photos, pictures, Word files and scanned PDFs have the swiped area read by on-device text recognition (Tesseract). With an answer box selected, Hear reads the answer. The app version shows in small print beside the PagePal name on the home screen.
-- [ ] **Stage 6: Data and reports.** Full report, timeline graph, and "Send to teacher" into the teacher's own Google Sheet, set up by scanning a teacher QR code.
+- [ ] **Stage 6: Data and reports.** Full report, timeline graph, and "Send to teacher" into the teacher's own Classroom Inbox, set up with a class QR code or link.
 - [ ] **Stage 7: Polish and rollout.** Accessibility checks, testing on school iPads and Chromebooks, teacher guide.
 
 ## Sending work
 
 PagePal is a worksheet tool: the home screen is just the student's name, **Get a worksheet** and **My worksheets**. When a worksheet is done, **Send** offers:
 
-- **Send to teacher:** (after scanning the class QR code) a row in the teacher's Google Sheet with the answers and stats, and a PDF of the worksheet in their Drive.
+- **Send to teacher:** (after joining with a class QR code or link from [Classroom Inbox](https://evandevon.github.io/classroom_inbox/)) a row in the teacher's **PagePal submissions** spreadsheet with the answers and stats, and a PDF of the worksheet in their Drive.
 - **Email or share:** opens the iPad share sheet with the CSV report and page pictures (Mail, AirDrop, Google Classroom, Seesaw, Drive).
 - **Email summary:** an email draft with a short text summary, addressed to the teacher's email from Settings.
 - **Save to Files:** downloads the CSV report and page pictures. On iPad they land in Files › Downloads.
@@ -31,10 +31,9 @@ PagePal is a worksheet tool: the home screen is just the student's name, **Get a
 
 ## Teacher page
 
-`teacher.html` (linked from Settings › “For teachers: make QR codes”) makes two kinds of QR code:
+`teacher.html` (linked from Settings › “For teachers: worksheet QR codes”) makes **worksheet QR codes**: paste a Google Drive link. The page checks the file is shared and is a type students can open, then shows a printable QR code.
 
-1. **Worksheet QR:** paste a Google Drive link. The page checks the file is shared and is a type students can open, then shows a printable QR code.
-2. **Class QR:** for receiving student work in a Google Sheet. It expires after the time the teacher picks. See the [teacher set-up guide](https://claude.ai/artifact/D4guC9H9etjt9FgFegXvW7), `teacher/PagePal-Inbox.gs` and `teacher/appsscript.json`.
+**Class QR codes** (for receiving students' work) and the inbox script are made on the [Classroom Inbox](https://evandevon.github.io/classroom_inbox/) teacher page ([repo](https://github.com/evandevon/classroom_inbox)). One class QR code or link connects PagePal and Word Helper. PagePal accepts class links on any path (`…/classroom_inbox/join/?teacher=…`, or older `…/PagePal/?teacher=…`) when scanned or pasted, and in the same browser it picks up a connection made on the Classroom Inbox join page straight away.
 
 What opens from Google Drive:
 
@@ -97,8 +96,7 @@ js/
 lib/                   Third-party libraries, kept locally for offline use (see lib/README.md)
 fonts/                 OpenDyslexic (SIL Open Font License)
 icons/                 App icons
-teacher/PagePal-Inbox.gs  Google Apps Script the teacher pastes into a Google Sheet to receive work
-teacher/appsscript.json   Its permission settings (this sheet + files it creates only)
+teacher/README.md      Where the inbox script went (Classroom Inbox)
 tests/                 Unit tests for the pure logic (run: node --test)
 ```
 
@@ -118,9 +116,8 @@ Every send carries the **student's name** and the **worksheet name**. Both are e
 
 | Where | Organised as |
 |---|---|
-| Teacher's Drive (Send to teacher) | `PagePal submissions › 3/4K › Fractions page 12 › Mia S – Fractions page 12 – 2026-11-21 1430.pdf` (class, then worksheet; files sort by student; sending again adds a new, later file) |
-| Word Helper work (same class QR code, inbox script v4) | Its own spreadsheet, **Word Helper submissions**, made by the script inside `Word Helper submissions` in the teacher's Drive; PDFs (if sent) in `Word Helper submissions › 3/4K › Mia S – Word Helper – 2026-11-21 1430.pdf` |
-| Teacher's sheet | One row per send: student, worksheet, class, stats, answers, PDF link. Filter or sort by the Worksheet column. |
+| Teacher's Drive (Send to teacher) | `Classroom Inbox › PagePal submissions › 3/4K › Fractions page 12 › Mia S – Fractions page 12 – 2026-11-21 1430.pdf` (class, then worksheet; files sort by student; sending again adds a new, later file) |
+| Teacher's spreadsheet | `Classroom Inbox › PagePal submissions` holds the **PagePal submissions** spreadsheet: one row per send with student, worksheet, class, stats, answers and PDF link. Filter or sort by the Worksheet column. Word Helper work goes to its own spreadsheet in `Classroom Inbox › Word Helper submissions`. |
 | Save to Files / share | `Mia-S_Fractions-page-12_2026-11-21_1430.csv` plus `…_p1.jpg`, `…_p2.jpg` (one name per sitting, so the CSV and its pictures stay paired) |
 
 Tips for tidy folders: students type **first name and surname initial** (`Mia S`) the same way every time; worksheets from a teacher's worksheet QR code arrive already named, so students don't need to rename them; photos and blank pages get a made-up name, and the Send dialog asks for a better one.
@@ -129,11 +126,11 @@ Tips for tidy folders: students type **first name and surname initial** (`Mia S`
 
 ## Security
 
-How sending work to a teacher is protected (details in the teacher set-up guide):
+How sending work to a teacher is protected (the inbox itself is described in the [Classroom Inbox README](https://github.com/evandevon/classroom_inbox#readme)):
 
-- **No server of ours.** Work goes from the iPad straight to the teacher's own Google Sheet (an Apps Script web app the teacher deploys).
-- **Narrow permissions.** `teacher/appsscript.json` limits the script to its own spreadsheet and the Drive files it creates (`spreadsheets.currentonly`, `drive.file`). It uses the Drive API directly because Apps Script's DriveApp always requires access to the whole Drive.
-- **Join codes, not keys, on the wall.** A class QR code holds a join code that the script issues and that expires (1 day to 1 term). Scanning it swaps the join code for the sending key. `resetCode()` replaces the key and cancels every join code.
+- **No server of ours.** Work goes from the iPad straight to the teacher's own Classroom Inbox: an Apps Script web app the teacher deploys from their Google Sheet, which files it in their Google Drive.
+- **Narrow permissions.** The inbox script's `appsscript.json` limits it to its own sheet and the Drive files it creates (`spreadsheets.currentonly`, `drive.file`). It uses the Drive and Sheets APIs directly because Apps Script's DriveApp always requires access to the whole Drive.
+- **Join codes, not keys, on the wall.** A class QR code or link holds a join code that the script issues and that expires (1 day to 1 term, or never until cancelled). Joining swaps it for the sending key. `cancelClassCodes()` stops every class code; `resetCode()` replaces the key and cancels every join code.
 - **Write-only.** The web app accepts submissions; nothing can be read back through it.
 - **File checks.** Pictures and PDFs must really be JPEG, PNG or PDF (checked by their first bytes), 5 MB at most. Anything else is refused and noted in the sheet.
 - **Rate limits.** At most 60 sends a minute and 1,500 a day.

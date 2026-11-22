@@ -924,3 +924,4 @@ body.mode-highcontrast .tw.speaking { background: rgba(255, 230, 0, 0.55); box-s
 
 /* Version, in small print beside the name on the home screen (so testers know what they're running) */
 .brand-version { font-size: 12px; font-weight: 500; opacity: .75; align-self: flex-end; margin-bottom: 4px; user-select: text; }
+.teacher-row input { flex: 1 1 200px; min-width: 0; }

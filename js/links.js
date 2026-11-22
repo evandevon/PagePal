@@ -127,3 +127,9 @@ export function teacherLink(appBase, teacher) {
   u.searchParams.set('teacher', encodeTeacher(teacher));
   return u.href;
 }
+
+/** The first web address inside some text (a pasted message), or ''. */
+export function firstLinkIn(text) {
+  const m = String(text || '').match(/https?:\/\/[^\s<>"']+/i);
+  return m ? m[0].replace(/[).,;!?]+$/, '') : '';
+}

@@ -13,6 +13,10 @@ const DEFAULTS = {
   teacher: null,           // {name, url, secret} from the class QR code (Send to teacher)
 };
 
+// Other pages on the same site share these settings: the Classroom Inbox
+// join page, and Word Helper (connecting or disconnecting a teacher). So the
+// copy in memory is re-read when another tab saves, and before every save,
+// so a change made elsewhere is never written over with an old value.
 let cache = null;
 const listeners = new Set();
 
@@ -24,6 +28,24 @@ function load() {
   return cache;
 }
 
+const same = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+
+/** Re-read the saved settings, telling listeners about anything that changed. */
+export function reloadSettings() {
+  const before = load();
+  cache = null;
+  const after = load();
+  for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (!same(before[name], after[name])) listeners.forEach(fn => fn(name, after[name]));
+  }
+}
+
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('storage', e => {
+    if (e.key === KEY || e.key === null) reloadSettings(); // null: storage was cleared
+  });
+}
+
 export function getSettings() {
   return { ...load() };
 }
@@ -33,6 +55,7 @@ export function getSetting(name) {
 }
 
 export function setSetting(name, value) {
+  reloadSettings(); // pick up changes from other tabs first
   const s = load();
   if (s[name] === value) return;
   s[name] = value;

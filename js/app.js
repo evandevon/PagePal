@@ -2,7 +2,7 @@
 
 import { APP_VERSION } from './config.js';
 import { $, toast, hideToast, escapeHtml, showBusy, setBusyText, pickFile } from './ui.js';
-import { getSettings, getSetting, setSetting } from './settings.js';
+import { getSettings, getSetting, setSetting, onSettingChange } from './settings.js';
 import { DISPLAY_MODES, applyDisplayMode } from './display-modes.js';
 import * as tts from './tts.js';
 import { Dictation, dictationStatus } from './dictation.js';
@@ -13,7 +13,7 @@ import { UnsupportedFileError } from './worksheets.js';
 import { blobToCanvas } from './image-tools.js';
 import { cropImage } from './crop.js';
 import { scanQr } from './qr-scan.js';
-import { parseLink } from './links.js';
+import { parseLink, firstLinkIn } from './links.js';
 import { fetchDrive, fetchUrl, RemoteError } from './remote.js';
 import { initViewer, openWorksheet, closeWorksheet, currentWorksheet, currentAnnotator, currentPageNumber, renameCurrent, pageImages, visibleSpot, goToPage, wordsInSwipe, highlightHeard, clearHeard } from './viewer.js';
 import { speakable, warmUpOcr, errorDetail, releaseReader } from './page-text.js';
@@ -211,7 +211,7 @@ async function connectTeacher(teacher) {
     toast('That class QR code has expired. Ask your teacher for a new one.', 6000);
     return false;
   }
-  if (!confirm(`Send your work to ${teacher.name}?\n\nOnly say yes to a QR code your teacher gave you.`)) return false;
+  if (!confirm(`Send your work to ${teacher.name}?\n\nOnly say yes to a QR code or link your teacher gave you.`)) return false;
   let saved = teacher;
   if (teacher.join) {
     const hide = showBusy('Connecting to your teacher…');
@@ -231,7 +231,7 @@ async function connectTeacher(teacher) {
 
 /** Text from a QR code, a paste, or the page address. */
 function handleLinkText(text) {
-  const link = parseLink(text);
+  const link = parseLink(text) || parseLink(firstLinkIn(text)); // also a link inside a longer message
   if (!link) {
     toast(/^https?:\/\//i.test(String(text).trim())
       ? 'That link isn’t a worksheet PagePal can open.'
@@ -451,14 +451,11 @@ initViewer({
     if (currentAnnotator()) currentAnnotator().deselect();
     const ws = currentWorksheet();
     wsSession.worksheet = ws ? ws.title : wsSession.worksheet;
-    const teacher = getSetting('teacher');
     $('#sd-student').value = wsSession.student || '';
     $('#sd-worksheet').value = wsSession.worksheet || '';
     $('#sd-name-hint').hidden = !worksheets.isPlaceholderTitle(wsSession.worksheet);
     renderStatsInto($('#send-dialog-stats'), wsSession, worksheetAnswer());
-    $('#sd-teacher').hidden = !teacher;
-    $('#sd-connect').hidden = !!teacher;
-    if (teacher) $('#sd-teacher').textContent = `Send to ${teacher.name}`;
+    renderSendTeacher();
     sendDialog.showModal();
   },
 });
@@ -881,6 +878,14 @@ emailInput.value = settings.teacherEmail || '';
 emailInput.addEventListener('change', () => setSetting('teacherEmail', emailInput.value.trim()));
 
 
+/** The Send dialog's "Send to …" / "Connect to my teacher" buttons. */
+function renderSendTeacher() {
+  const teacher = getSetting('teacher');
+  $('#sd-teacher').hidden = !teacher;
+  $('#sd-connect').hidden = !!teacher;
+  if (teacher) $('#sd-teacher').textContent = `Send to ${teacher.name}`;
+}
+
 function renderTeacher() {
   const t = getSetting('teacher');
   $('#set-teacher-status').textContent = t ? `Sending work to ${t.name}` : 'Not connected';
@@ -888,11 +893,30 @@ function renderTeacher() {
   $('#btn-disconnect-teacher').hidden = !t;
 }
 renderTeacher();
+// Another tab (Classroom Inbox's join page, or Word Helper) changed the teacher.
+onSettingChange(name => {
+  if (name !== 'teacher') return;
+  renderTeacher();
+  renderSendTeacher();
+});
 $('#btn-connect-teacher').addEventListener('click', async () => {
   dialog.close();
   const text = await scanQr();
   if (text) handleLinkText(text);
 });
+async function connectFromPastedLink() {
+  const box = $('#set-teacher-link');
+  const text = box.value.trim();
+  if (!text) { toast('Paste the class link your teacher shared first.', 4000); box.focus(); return; }
+  const link = parseLink(text) || parseLink(firstLinkIn(text));
+  if (!link || link.type !== 'teacher') {
+    toast('That isn’t a class link. Copy the whole link your teacher shared (it has ?teacher= in it), then paste it again.', 6000);
+    return;
+  }
+  if (await connectTeacher(link.teacher)) box.value = '';
+}
+$('#btn-teacher-link').addEventListener('click', connectFromPastedLink);
+$('#set-teacher-link').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); connectFromPastedLink(); } });
 $('#btn-disconnect-teacher').addEventListener('click', () => {
   if (!confirm('Stop sending work to this teacher?')) return;
   setSetting('teacher', null);

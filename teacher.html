@@ -66,49 +66,9 @@
 
     <section class="card" aria-labelledby="h-inbox">
       <h2 id="h-inbox">2. Class QR code for receiving work</h2>
-      <p class="note">Students scan this once; from then on every worksheet they send arrives in your Google Sheet. Teach more than one class? Use the same web app URL and secret code with a different name for each class. Set up the sheet first with the
-        <a href="https://claude.ai/artifact/D4guC9H9etjt9FgFegXvW7" target="_blank" rel="noopener">teacher set-up guide</a>
-        (files: <a href="https://github.com/evandevon/PagePal/blob/main/teacher/PagePal-Inbox.gs" target="_blank" rel="noopener">PagePal-Inbox.gs</a>,
-        <a href="https://github.com/evandevon/PagePal/blob/main/teacher/appsscript.json" target="_blank" rel="noopener">appsscript.json</a>).</p>
-
-      <label class="field-label" for="in-name">Your name and class, as students know it</label>
-      <input id="in-name" type="text" autocomplete="off" placeholder="Mr Evans, 3/4B">
-      <label class="field-label" for="in-url">Web app URL (from Deploy, ends in /exec)</label>
-      <input id="in-url" type="text" inputmode="url" autocomplete="off" spellcheck="false"
-             placeholder="https://script.google.com/macros/s/…/exec">
-      <label class="field-label" for="in-secret">Secret code (from the Execution log)</label>
-      <input id="in-secret" type="password" autocomplete="off" spellcheck="false" placeholder="24 letters and numbers">
-      <label class="field-label" for="in-days">QR code works for</label>
-      <select id="in-days">
-        <option value="1">1 day</option>
-        <option value="7" selected>1 week</option>
-        <option value="28">4 weeks</option>
-        <option value="80">The whole term (about 11 weeks)</option>
-      </select>
-      <p class="note">After that, the QR code stops connecting new iPads. iPads already connected keep working.</p>
+      <p class="note">Class QR codes, and the inbox that receives students’ work, are now made on the Classroom Inbox teacher page. One class QR code connects PagePal and Word Helper.</p>
       <div class="send-tools">
-        <button id="in-make" class="tool-btn primary" type="button">Check connection and make QR code</button>
-      </div>
-      <div id="in-status" class="status" role="status" aria-live="polite" hidden></div>
-
-      <div id="in-result" class="qr-result print-card" hidden>
-        <div id="in-qr" class="qr-box"></div>
-        <p id="in-label" class="qr-label"></p>
-        <p class="qr-sub">In PagePal: Settings › Scan class QR code. In Word Helper: Connect to my teacher.</p>
-        <p id="in-expiry" class="qr-sub"></p>
-        <div class="send-tools no-print">
-          <button id="in-copy" class="tool-btn" type="button">Copy link</button>
-          <button id="in-png" class="tool-btn" type="button">Download picture</button>
-          <button id="in-print" class="tool-btn primary" type="button">Print</button>
-        </div>
-        <div class="status warn no-print tips">
-          <strong>Keeping it safe</strong>
-          <ul>
-            <li>Show it while students connect, then take it down. Anyone who scans it before it expires can send work to your sheet (they can never read it).</li>
-            <li>At the start of each term, or if the code spreads, run <code>resetCode</code> in Apps Script. Connected iPads then need a new QR code.</li>
-            <li>Open students’ pictures and PDFs in Google Drive’s viewer rather than downloading them, and be wary of web links inside answers.</li>
-          </ul>
-        </div>
+        <a class="tool-btn primary" href="https://evandevon.github.io/classroom_inbox/" target="_blank" rel="noopener">Open Classroom Inbox</a>
       </div>
     </section>
   </main>

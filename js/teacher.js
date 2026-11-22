@@ -1,15 +1,13 @@
-// Teacher page: makes the two kinds of QR code.
+// Teacher page: makes worksheet QR codes.
 //  1. Worksheet QR — checks a Google Drive (or PDF) link will open for
 //     students, then makes a QR code that opens it in PagePal.
-//  2. Class QR — tests the teacher's PagePal Inbox (Google Sheet web app)
-//     and makes the QR code students scan once to connect.
+//  2. Class QR codes moved to Classroom Inbox; the page just links there.
 
 import qrcode from '../lib/qrcode.js';
 import { $, toast, escapeHtml, downloadBlob } from './ui.js';
-import { parseLink, worksheetLink, teacherLink, isInboxUrl } from './links.js';
+import { parseLink, worksheetLink } from './links.js';
 import { driveInfo, driveReady, RemoteError } from './remote.js';
 import { unsupportedReason, isDocx, cleanName } from './worksheets.js';
-import { inboxVersion, newJoinCode } from './send.js';
 
 const APP_BASE = new URL('./', location.href).href;
 
@@ -168,77 +166,8 @@ $('#ws-png').addEventListener('click', async () => {
 });
 $('#ws-print').addEventListener('click', () => printCard($('#ws-result').closest('section')));
 
-// ── 2. Class inbox QR ─────────────────────────────────
-// The QR code holds a join code that expires, issued by the teacher's own
-// script. The secret code (the sending key) is never put in the QR code.
-
-let inQr = null;
-
-function readInbox() {
-  const name = $('#in-name').value.trim();
-  const url = $('#in-url').value.trim();
-  const secret = $('#in-secret').value.trim();
-  const status = $('#in-status');
-  if (!name) { setStatus(status, 'error', 'Type your name and class, as students know it.'); return null; }
-  if (!isInboxUrl(url)) { setStatus(status, 'error', 'The web app URL should start with https://script.google.com/ and end in /exec. Copy it from Deploy › Manage deployments.'); return null; }
-  if (!secret) { setStatus(status, 'error', 'Paste the secret code from the Apps Script Execution log (run <code>setup</code> to see it again).'); return null; }
-  return { name, url, secret };
-}
-
-const CHECKLIST = `<ul>
-  <li>the address is the <strong>Web app URL</strong> ending in <code>/exec</code>;</li>
-  <li>in Deploy › Manage deployments, <strong>Execute as</strong> is Me and <strong>Who has access</strong> is Anyone;</li>
-  <li>opening the address in a new tab shows <code>{"ok":true</code>.</li></ul>`;
-
-$('#in-make').addEventListener('click', async () => {
-  const teacher = readInbox();
-  if (!teacher) return;
-  const status = $('#in-status');
-  $('#in-result').hidden = true;
-  setStatus(status, 'ok', 'Checking your sheet…');
-
-  const version = await inboxVersion(teacher.url);
-  if (version === 0) { setStatus(status, 'error', 'Couldn’t reach your sheet. Check:' + CHECKLIST); return; }
-  if (version < 2) {
-    setStatus(status, 'error', 'Your sheet is running an older PagePal Inbox script. Paste in the new <code>PagePal-Inbox.gs</code> and <code>appsscript.json</code> (see the guide), run <code>setup</code>, then <strong>Deploy › Manage deployments › Edit › New version</strong>.');
-    return;
-  }
-  const days = Number($('#in-days').value) || 7;
-  const result = await newJoinCode(teacher.url, teacher.secret, days, teacher.name);
-  if (!result.ok) {
-    setStatus(status, 'error', result.error === 'wrong-code'
-      ? 'Your sheet answered, but the secret code doesn’t match. Copy it again from the Execution log (run <code>setup</code> to show it).'
-      : result.error === 'busy' ? 'Your sheet is busy. Wait a minute and try again.' : 'Couldn’t make the code. Check:' + CHECKLIST);
-    return;
-  }
-  setStatus(status, 'ok', 'Connected to your sheet. Print or show the QR code below.' + (version < 4
-    ? ' <br>This QR code works for PagePal now. To also take work from Word Helper (it gets its own spreadsheet), update the script to version 4: paste in the new <code>PagePal-Inbox.gs</code>, run <code>setup</code>, then <strong>Deploy › Manage deployments › Edit › New version</strong>.'
-    : ''));
-  const url = teacherLink(APP_BASE, { name: teacher.name, url: teacher.url, join: result.join, expires: result.expires });
-  inQr = { qr: makeQr(url), url, label: teacher.name, expires: result.expires };
-  const until = new Date(result.expires).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
-  $('#in-qr').innerHTML = qrSvg(inQr.qr);
-  $('#in-label').textContent = 'Send your work to ' + teacher.name;
-  $('#in-expiry').textContent = 'Connects new iPads until ' + until;
-  $('#in-result').hidden = false;
-  reveal($('#in-result'));
-  try { localStorage.setItem('pagepal.teacherPage', JSON.stringify({ name: teacher.name, url: teacher.url })); } catch { /* ignore */ }
-});
-
-$('#in-copy').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(inQr.url); toast('Class link copied. Paste it where a student would scan the QR code.'); }
-  catch { toast('Couldn’t copy the link. Use the QR code instead.'); }
-});
-$('#in-png').addEventListener('click', async () => {
-  downloadBlob(await qrPng(inQr.qr, inQr.label, $('#in-expiry').textContent), `Class-QR-${fileSlug(inQr.label)}.png`);
-});
-$('#in-print').addEventListener('click', () => printCard($('#in-result').closest('section')));
-
-// Remember the name and address (never the secret code) for next time.
-try {
-  const saved = JSON.parse(localStorage.getItem('pagepal.teacherPage') || 'null');
-  if (saved) { $('#in-name').value = saved.name || ''; $('#in-url').value = saved.url || ''; }
-} catch { /* ignore */ }
+// 2. Class QR codes are made on the Classroom Inbox teacher page
+//    (https://evandevon.github.io/classroom_inbox/).
 
 // Tells the start-up check in the page that the code loaded.
 window.__pagepalReady = true;

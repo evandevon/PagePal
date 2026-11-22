@@ -132,31 +132,16 @@ export function joinInbox(url, join) {
   return postJson(url, { action: 'join', join });
 }
 
-/** Teacher page: ask the script for a new join code (proves the secret code is right). */
-export function newJoinCode(url, secret, days, label) {
-  return postJson(url, { action: 'newJoin', secret, days, label });
-}
-
-/** Teacher page: which version of the PagePal Inbox script is deployed. */
-export async function inboxVersion(url) {
-  try {
-    const res = await fetch(url);
-    const o = await res.json();
-    return o && o.app === 'PagePal Inbox' ? (o.version || 1) : 0;
-  } catch {
-    return 0;
-  }
-}
-
 export const INBOX_ERRORS = {
   'wrong-code': 'Your teacher’s class QR code has changed. Scan the new one (Settings › Scan class QR code).',
   'expired-join': 'That class QR code has expired. Ask your teacher for a new one.',
-  busy: 'Your teacher’s sheet is very busy right now. Wait a minute and try again.',
+  busy: 'Your teacher’s inbox is very busy right now. Wait a minute and try again.',
   'too-big': 'This work is too big to send. Try sending fewer pages.',
-  network: 'Couldn’t reach your teacher’s sheet. Check the wifi and try again.',
-  'bad-reply': 'Your teacher’s sheet didn’t answer properly. Tell your teacher.',
-  'bad-request': 'Your teacher’s sheet didn’t understand the message. Tell your teacher.',
-  server: 'Your teacher’s sheet had a problem. Tell your teacher.',
+  network: 'Couldn’t reach your teacher’s inbox. Check the wifi and try again.',
+  'bad-reply': 'Your teacher’s inbox didn’t answer properly. Tell your teacher.',
+  'bad-request': 'Your teacher’s inbox didn’t understand the message. Tell your teacher.',
+  server: 'Your teacher’s inbox had a problem. Tell your teacher.',
+  paused: 'Your teacher’s inbox is turned off right now. Tell your teacher.',
 };
 
 export async function sendToTeacher(work) {
@@ -188,9 +173,9 @@ export async function sendToTeacher(work) {
 
 export const SEND_HELP = {
   teacher: {
-    hint: 'Straight into your teacher’s Google Sheet.',
+    hint: 'Straight to your teacher’s inbox.',
     details: [
-      'Goes to the Google Sheet your teacher set up (from the class QR code you scanned). Nothing else is opened.',
+      'Goes to the inbox your teacher set up in their Google Drive (from the class QR code you scanned). Nothing else is opened.',
       'Sends: your name, the worksheet name, time spent working, how many words you typed, said or picked from suggestions, the words you listened to, your answers as text, and a PDF of the worksheet with your answers on every page.',
       'Your teacher sees a new row in their sheet, with a link to the PDF.',
     ],
